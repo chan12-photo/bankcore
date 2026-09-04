@@ -82,6 +82,7 @@ curl "http://localhost:8080/api/v1/accounts/1/journal-entries?beforeEntryId=100&
 - [docs/evidence/2026-09-04-core-behavior.md](docs/evidence/2026-09-04-core-behavior.md)
 - [docs/evidence/2026-09-04-journal-pagination-benchmark.md](docs/evidence/2026-09-04-journal-pagination-benchmark.md)
 - [docs/portfolio-writeup-ko.md](docs/portfolio-writeup-ko.md)
+- [docs/resume-and-interview-notes-ko.md](docs/resume-and-interview-notes-ko.md)
 - [docs/adr/0001-scope-as-transfer-correctness-backend.md](docs/adr/0001-scope-as-transfer-correctness-backend.md)
 - [docs/adr/0002-public-money-api-requires-idempotency.md](docs/adr/0002-public-money-api-requires-idempotency.md)
 - [docs/adr/0003-reconciliation-as-core-evidence.md](docs/adr/0003-reconciliation-as-core-evidence.md)

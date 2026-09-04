@@ -42,6 +42,7 @@ Completed:
 - GitHub Actions CI is green on the latest pushed `main` commits.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
 - Korean portfolio write-up is captured in `docs/portfolio-writeup-ko.md`.
+- Korean resume and interview notes are captured in `docs/resume-and-interview-notes-ko.md`.
 
 Current local environment:
 
@@ -58,5 +59,5 @@ Current local environment:
 1. Add a controlled seed path for test funds without presenting deposit as a customer-facing money API.
 2. Capture larger pagination measurements with seeded journal volume.
 3. Add optional OpenAPI documentation if this becomes a submitted API project.
-4. Prepare final resume bullets after choosing the target role wording.
+4. Choose the final resume bullet wording based on the target role.
 5. Add a cleanup command for local benchmark data if repeated measurements become frequent.
