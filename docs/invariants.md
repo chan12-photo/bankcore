@@ -25,6 +25,7 @@
 - Fault injection after journal flush must not leave committed rows.
 - Unsafe no-lock experiments are allowed only in test scope and must not be used by production services.
 - Optimistic lock experiments must prove that stale concurrent writes do not both commit.
+- Pessimistic lock experiments must prove that competing writers observe serialized account state.
 
 ## Idempotency
 

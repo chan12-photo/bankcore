@@ -69,6 +69,8 @@ Result on the local development database after journaled flows:
 - A test-only unsafe no-lock transfer experiment can create reconciliation mismatches under concurrent stale reads.
 - A test-only optimistic locking experiment with `@Version` allows only one concurrent stale-version transfer to commit.
 - The optimistic locking experiment leaves no reconciliation mismatches for the involved accounts after one transfer rolls back.
+- A test-only pessimistic write lock experiment serializes concurrent transfers on the source account row.
+- The pessimistic write lock experiment makes the second transfer observe the latest balance and roll back without reconciliation mismatches.
 
 ## Important Boundary
 

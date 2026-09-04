@@ -31,6 +31,7 @@ Completed:
 - Reconciliation API reports mismatched accounts for evidence and diagnostics.
 - Test-only unsafe no-lock race experiment demonstrates stale-balance overwrite and reconciliation mismatch.
 - Test-only optimistic locking race experiment demonstrates one successful transfer, one rolled-back transfer, and no reconciliation mismatch.
+- Test-only pessimistic write lock race experiment demonstrates row-level serialization and no reconciliation mismatch.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
 
 Current local environment:
@@ -46,7 +47,7 @@ Current local environment:
 ## Next Steps
 
 1. Add a controlled seed path for test funds without presenting deposit as a customer-facing money API.
-2. Add pessimistic lock concurrency experiment.
-3. Capture SQL query plans and pagination measurements.
-4. Add portfolio-facing ADRs that explain scope reductions and tradeoffs.
-5. Refine API error responses for missing headers and malformed request bodies.
+2. Capture SQL query plans and pagination measurements.
+3. Add portfolio-facing ADRs that explain scope reductions and tradeoffs.
+4. Refine API error responses for missing headers and malformed request bodies.
+5. Add CI evidence after GitHub Actions runs on the pushed commits.
