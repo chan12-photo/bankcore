@@ -36,7 +36,7 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 
 - no-lock 실험: 두 요청이 같은 stale balance를 읽고 덮어써 reconciliation mismatch를 만들 수 있음을 증명했습니다.
 - optimistic lock 실험: `@Version` 기반으로 두 stale writer 중 하나만 commit되고 하나는 rollback됨을 확인했고, API 경계에서는 해당 충돌을 `CONCURRENT_MODIFICATION` 409 응답으로 표현했습니다.
-- pessimistic lock 실험: `PESSIMISTIC_WRITE`로 source account row를 직렬화해 두 번째 요청이 최신 잔액을 보도록 만들었습니다.
+- pessimistic lock 실험: `PESSIMISTIC_WRITE`로 account row를 직렬화해 두 번째 요청이 최신 잔액을 보도록 만들었습니다. 실제 internal transfer는 두 계좌를 account id 순서로 잠가 반대 방향 동시 이체의 deadlock 위험을 줄였습니다.
 
 ### Reconciliation
 

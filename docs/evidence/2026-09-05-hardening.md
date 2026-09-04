@@ -10,6 +10,7 @@ This pass closes review findings that could otherwise weaken the portfolio story
 - The local walkthrough should provide a repeatable way to run a successful transfer without exposing a public deposit API.
 - The pagination benchmark seed script should include the same offset comparison query described in evidence.
 - Optimistic locking failures should return a stable conflict response instead of leaking as a generic server error.
+- Opposite-direction transfers should avoid locking the same account pair in inconsistent order.
 
 ## Validation Commands
 
@@ -31,7 +32,7 @@ Result:
 
 ```text
 BUILD SUCCESSFUL
-tests=56 failures=0 errors=0 skipped=0
+tests=57 failures=0 errors=0 skipped=0
 ```
 
 Docker was running locally for Testcontainers:
@@ -154,6 +155,19 @@ Spring optimistic locking failures are now mapped to:
 ```
 
 This intentionally chooses a clear `409 CONFLICT` API policy for stale concurrent writes. The caller can retry the same idempotent request safely, while the server avoids hiding a concurrency conflict behind a generic `500`.
+
+### Ordered Pessimistic Account Locks
+
+Production internal transfer now loads both participating accounts with `PESSIMISTIC_WRITE` locks in deterministic account-id order, then maps the loaded entities back to the requested source and destination roles.
+
+This avoids the classic opposite-direction deadlock pattern where one transaction locks account A then waits for B while another locks account B then waits for A.
+
+The integration test `transferInternalIdempotent_shouldSerializeOppositeDirectionTransfersWithOrderedLocks` starts two transfers at the same time:
+
+- Account A to account B for `3000`.
+- Account B to account A for `4000`.
+
+Both complete successfully, final balances reflect both transfers, and the database contains exactly two financial transactions, four journal rows, and two idempotency records for the pair of requests.
 
 ## Remaining Deliberate Choice
 

@@ -245,6 +245,61 @@ class TransferServiceIntegrationTest {
     }
 
     @Test
+    void transferInternalIdempotent_shouldSerializeOppositeDirectionTransfersWithOrderedLocks()
+            throws Exception {
+        Account firstAccount = createAccountWithBalance(10_000L);
+        Account secondAccount = createAccountWithBalance(10_000L);
+        long transactionCountBefore = financialTransactionRepository.count();
+        long journalCountBefore = accountJournalEntryRepository.count();
+        long idempotencyCountBefore = idempotencyRecordRepository.count();
+        CountDownLatch startSignal = new CountDownLatch(1);
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+
+        List<InternalTransferResult> results;
+        try {
+            List<Callable<InternalTransferResult>> tasks = List.of(
+                    () -> {
+                        assertThat(startSignal.await(5, TimeUnit.SECONDS)).isTrue();
+                        return transferService.transferInternalIdempotent(
+                                "integration-test",
+                                nextIdempotencyKey(),
+                                firstAccount.getId(),
+                                secondAccount.getId(),
+                                3_000L
+                        );
+                    },
+                    () -> {
+                        assertThat(startSignal.await(5, TimeUnit.SECONDS)).isTrue();
+                        return transferService.transferInternalIdempotent(
+                                "integration-test",
+                                nextIdempotencyKey(),
+                                secondAccount.getId(),
+                                firstAccount.getId(),
+                                4_000L
+                        );
+                    }
+            );
+            List<Future<InternalTransferResult>> futures = tasks.stream()
+                    .map(executorService::submit)
+                    .toList();
+
+            startSignal.countDown();
+            results = futures.stream()
+                    .map(future -> getFuture(future, 10, TimeUnit.SECONDS))
+                    .toList();
+        } finally {
+            executorService.shutdownNow();
+        }
+
+        assertThat(results).hasSize(2);
+        assertThat(accountRepository.findById(firstAccount.getId()).orElseThrow().getBalance()).isEqualTo(11_000L);
+        assertThat(accountRepository.findById(secondAccount.getId()).orElseThrow().getBalance()).isEqualTo(9_000L);
+        assertThat(financialTransactionRepository.count()).isEqualTo(transactionCountBefore + 2);
+        assertThat(accountJournalEntryRepository.count()).isEqualTo(journalCountBefore + 4);
+        assertThat(idempotencyRecordRepository.count()).isEqualTo(idempotencyCountBefore + 2);
+    }
+
+    @Test
     void transferInternalIdempotent_shouldRejectSameKeyWithDifferentFingerprint() {
         Account sourceAccount = createAccountWithBalance(10_000L);
         Account destinationAccount = createAccountWithBalance(2_000L);

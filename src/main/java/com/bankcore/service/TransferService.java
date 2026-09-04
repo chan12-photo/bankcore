@@ -198,8 +198,9 @@ public class TransferService {
             long validAmount,
             TransferFailurePoint failurePoint
     ) {
-        Account sourceAccount = findAccount(sourceAccountId);
-        Account destinationAccount = findAccount(destinationAccountId);
+        LockedTransferAccounts transferAccounts = findTransferAccountsForUpdate(sourceAccountId, destinationAccountId);
+        Account sourceAccount = transferAccounts.sourceAccount();
+        Account destinationAccount = transferAccounts.destinationAccount();
 
         sourceAccount.withdraw(validAmount);
         failIfRequested(failurePoint, TransferFailurePoint.AFTER_SOURCE_WITHDRAWAL);
@@ -251,12 +252,32 @@ public class TransferService {
         );
     }
 
-    private Account findAccount(Long accountId) {
-        if (accountId == null) {
+    private LockedTransferAccounts findTransferAccountsForUpdate(Long sourceAccountId, Long destinationAccountId) {
+        if (sourceAccountId == null || destinationAccountId == null) {
             throw new AccountNotFoundException(null);
         }
-        return accountRepository.findById(accountId)
-                .orElseThrow(() -> new AccountNotFoundException(accountId));
+        List<Long> accountIds = sourceAccountId.compareTo(destinationAccountId) < 0
+                ? List.of(sourceAccountId, destinationAccountId)
+                : List.of(destinationAccountId, sourceAccountId);
+        List<Account> lockedAccounts = accountRepository.findAllByIdInOrderByIdForUpdate(accountIds);
+
+        Account sourceAccount = null;
+        Account destinationAccount = null;
+        for (Account account : lockedAccounts) {
+            if (account.getId().equals(sourceAccountId)) {
+                sourceAccount = account;
+            }
+            if (account.getId().equals(destinationAccountId)) {
+                destinationAccount = account;
+            }
+        }
+        if (sourceAccount == null) {
+            throw new AccountNotFoundException(sourceAccountId);
+        }
+        if (destinationAccount == null) {
+            throw new AccountNotFoundException(destinationAccountId);
+        }
+        return new LockedTransferAccounts(sourceAccount, destinationAccount);
     }
 
     private static void validateDistinctAccounts(Long sourceAccountId, Long destinationAccountId) {
@@ -302,5 +323,11 @@ public class TransferService {
                     amount
             );
         }
+    }
+
+    private record LockedTransferAccounts(
+            Account sourceAccount,
+            Account destinationAccount
+    ) {
     }
 }

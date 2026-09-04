@@ -24,6 +24,7 @@ The MVP must prove:
 - Failed transfer leaves no partial balance, transaction, or journal state. This is covered by rollback injection tests after source withdrawal and after journal flush.
 - No-lock behavior can break an invariant under concurrency.
 - Optimistic and pessimistic strategies both preserve correctness under their intended tests.
+- Production internal transfer uses deterministic ordered pessimistic account locks to reduce opposite-direction deadlock risk.
 - Idempotency is scoped by caller, operation, and key. This is implemented at the service layer for internal transfer.
 - Same scoped key and same request has at most one committed money effect. This is covered by replay tests and a concurrent same-key integration test.
 - Same scoped key and different request is rejected. This is covered by fingerprint conflict tests.

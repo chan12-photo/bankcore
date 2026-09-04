@@ -18,6 +18,7 @@ This is not a real banking core, general ledger, compliance system, or productio
 - Internal transfer service with rollback integration tests
 - Service-layer idempotency for internal transfer
 - Public internal transfer API requiring caller scope and idempotency key
+- Deterministic ordered account write locks for internal transfer
 - Controlled seed funding service for journaled test data
 - Account balance reconciliation API
 - Account journal keyset pagination API

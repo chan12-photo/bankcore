@@ -30,6 +30,8 @@ Completed:
 - Idempotency header lengths are validated before database insert to match schema limits.
 - Controlled seed funding service records test funds as transaction and journal rows without exposing a public deposit API.
 - Account service no longer exposes non-journaled deposit or withdrawal service methods.
+- Internal transfer loads both transfer accounts with pessimistic write locks in deterministic account-id order.
+- Opposite-direction concurrent transfers are covered by an ordered-lock integration test to reduce deadlock risk.
 - Account balance reconciliation service compares stored balances against journal-derived balances.
 - Reconciliation API reports mismatched accounts for evidence and diagnostics.
 - Test-only unsafe no-lock race experiment demonstrates stale-balance overwrite and reconciliation mismatch.
