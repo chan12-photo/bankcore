@@ -11,6 +11,7 @@ This pass closes review findings that could otherwise weaken the portfolio story
 - The pagination benchmark seed script should include the same offset comparison query described in evidence.
 - Optimistic locking failures should return a stable conflict response instead of leaking as a generic server error.
 - Opposite-direction transfers should avoid locking the same account pair in inconsistent order.
+- The project should expose API documentation and a one-command local demo for reviewers.
 
 ## Validation Commands
 
@@ -32,7 +33,7 @@ Result:
 
 ```text
 BUILD SUCCESSFUL
-tests=57 failures=0 errors=0 skipped=0
+tests=59 failures=0 errors=0 skipped=0
 ```
 
 Docker was running locally for Testcontainers:
@@ -92,6 +93,25 @@ Reconciliation after the demo transfer:
 []
 ```
 
+The automated demo script was also verified:
+
+```bash
+./scripts/demo.sh
+```
+
+Result:
+
+```text
+Demo completed successfully.
+```
+
+OpenAPI endpoints were verified manually on the demo server:
+
+```text
+GET /v3/api-docs -> BankCore API
+GET /swagger-ui.html -> 302 /swagger-ui/index.html
+```
+
 ## Implemented Hardening
 
 ### Concurrent Idempotency
@@ -138,6 +158,26 @@ The `demo` Spring profile creates two synthetic journal-funded accounts:
 - `DEMO-BOB-001` with `30000`
 
 `GET /api/v1/demo/accounts` returns their current ids and balances so a local user can immediately run a successful idempotent transfer. The demo endpoint is available only under the `demo` profile.
+
+`scripts/demo.sh` automates the local walkthrough on port `18080`:
+
+- Starts Docker Compose.
+- Starts the app with `SPRING_PROFILES_ACTIVE=demo`.
+- Checks health.
+- Reads demo account ids.
+- Performs an idempotent internal transfer.
+- Replays the same request and verifies the response is identical.
+- Reads source account journal entries.
+- Verifies reconciliation returns no mismatches.
+
+### API Documentation
+
+springdoc-openapi generates the OpenAPI description and Swagger UI:
+
+- Swagger UI: `/swagger-ui.html`
+- OpenAPI JSON: `/v3/api-docs`
+
+The integration test `openApiDocs_shouldExposeCoreApiPaths` verifies that the generated OpenAPI document includes the core health, customer, account, transfer, reconciliation, and journal endpoints.
 
 ### Pagination Benchmark Reproducibility
 

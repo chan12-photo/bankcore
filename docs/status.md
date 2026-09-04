@@ -46,6 +46,8 @@ Completed:
 - Local SQL evidence confirms the journal pagination index is present and usable.
 - Synthetic 50,000-row journal pagination benchmark compares keyset pagination with offset pagination and the seed script includes both query shapes.
 - A `demo` Spring profile creates two journal-funded synthetic demo accounts for repeatable local walkthroughs.
+- `scripts/demo.sh` runs an automated local demo for health, demo accounts, idempotent transfer replay, journal lookup, and reconciliation.
+- OpenAPI JSON and Swagger UI are available through springdoc-openapi and covered by integration tests.
 - ADRs document the scope reduction, idempotency requirement, and reconciliation decision.
 - GitHub Actions CI is green on the latest pushed `main` commits.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
