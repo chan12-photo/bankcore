@@ -67,6 +67,8 @@ Result on the local development database after journaled flows:
 - Reconciliation detects direct balance mutation without journal evidence.
 - Journaled controlled seed funding plus internal transfer does not produce reconciliation mismatches.
 - A test-only unsafe no-lock transfer experiment can create reconciliation mismatches under concurrent stale reads.
+- A test-only optimistic locking experiment with `@Version` allows only one concurrent stale-version transfer to commit.
+- The optimistic locking experiment leaves no reconciliation mismatches for the involved accounts after one transfer rolls back.
 
 ## Important Boundary
 
