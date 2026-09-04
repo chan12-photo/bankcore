@@ -60,4 +60,4 @@ Current local environment:
 2. Capture larger pagination measurements with seeded journal volume.
 3. Add optional OpenAPI documentation if this becomes a submitted API project.
 4. Choose the final resume bullet wording based on the target role.
-5. Add a cleanup command for local benchmark data if repeated measurements become frequent.
+5. Add optional OpenAPI documentation if this becomes a submitted API project.

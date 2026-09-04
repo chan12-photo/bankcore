@@ -15,6 +15,13 @@ docker exec -i bankcore-mysql mysql -ubankcore -pbankcore_password bankcore \
   < scripts/sql/seed-journal-pagination-benchmark.sql
 ```
 
+Cleanup script:
+
+```bash
+docker exec -i bankcore-mysql mysql -ubankcore -pbankcore_password bankcore \
+  < scripts/sql/cleanup-journal-pagination-benchmark.sql
+```
+
 Inserted benchmark data:
 
 ```text
