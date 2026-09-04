@@ -15,9 +15,11 @@ import com.bankcore.exception.InvalidAmountException;
 import com.bankcore.exception.InvalidCustomerNameException;
 import com.bankcore.exception.InvalidIdempotencyRequestException;
 import com.bankcore.exception.SameAccountTransferException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
@@ -41,6 +43,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IdempotencyKeyConflictException.class)
     public ResponseEntity<ApiErrorResponse> handleIdempotencyKeyConflict(IdempotencyKeyConflictException exception) {
         return error(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage());
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingRequestHeader(MissingRequestHeaderException exception) {
+        return error(
+                HttpStatus.BAD_REQUEST,
+                "MISSING_REQUIRED_HEADER",
+                "Missing required header: " + exception.getHeaderName()
+        );
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleMessageNotReadable() {
+        return error(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_BODY", "Request body is missing or malformed.");
     }
 
     @ExceptionHandler({

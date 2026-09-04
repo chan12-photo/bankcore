@@ -145,6 +145,34 @@ class TransferControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("INVALID_IDEMPOTENCY_REQUEST"));
     }
 
+    @Test
+    void internalTransfer_shouldRejectMissingIdempotencyHeaderWithApiError() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        mockMvc.perform(post("/api/v1/transfers/internal")
+                        .header("X-Caller-Scope", "controller-test")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(sourceAccount.getId(), destinationAccount.getId(), 3_000L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MISSING_REQUIRED_HEADER"))
+                .andExpect(jsonPath("$.message").value("Missing required header: Idempotency-Key"));
+    }
+
+    @Test
+    void internalTransfer_shouldRejectMalformedJsonWithApiError() throws Exception {
+        mockMvc.perform(post("/api/v1/transfers/internal")
+                        .header("X-Caller-Scope", "controller-test")
+                        .header("Idempotency-Key", nextIdempotencyKey())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sourceAccountId":
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST_BODY"))
+                .andExpect(jsonPath("$.message").value("Request body is missing or malformed."));
+    }
+
     private Account createAccountWithBalance(long balance) {
         long sequence = ACCOUNT_SEQUENCE.incrementAndGet();
         Customer customer = customerRepository.saveAndFlush(new Customer("Transfer API Customer " + sequence));

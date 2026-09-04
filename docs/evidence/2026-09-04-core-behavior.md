@@ -64,6 +64,7 @@ Result on the local development database after journaled flows:
 - Repeating the same idempotency key with the same request returns the same transfer result without a duplicate money effect.
 - Repeating the same idempotency key with a different request fingerprint is rejected.
 - Failed idempotent transfer rolls back the idempotency record together with transfer state.
+- Missing idempotency headers and malformed JSON return stable `ApiErrorResponse` bodies.
 - Reconciliation detects direct balance mutation without journal evidence.
 - Journaled controlled seed funding plus internal transfer does not produce reconciliation mismatches.
 - A test-only unsafe no-lock transfer experiment can create reconciliation mismatches under concurrent stale reads.
