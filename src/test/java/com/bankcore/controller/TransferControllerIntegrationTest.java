@@ -6,6 +6,7 @@ import com.bankcore.repository.AccountJournalEntryRepository;
 import com.bankcore.repository.AccountRepository;
 import com.bankcore.repository.CustomerRepository;
 import com.bankcore.repository.FinancialTransactionRepository;
+import com.bankcore.service.ControlledFundingService;
 import com.bankcore.support.MySqlContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,9 @@ class TransferControllerIntegrationTest {
 
     @Autowired
     private CustomerRepository customerRepository;
+
+    @Autowired
+    private ControlledFundingService controlledFundingService;
 
     @Autowired
     private AccountRepository accountRepository;
@@ -145,10 +149,11 @@ class TransferControllerIntegrationTest {
         long sequence = ACCOUNT_SEQUENCE.incrementAndGet();
         Customer customer = customerRepository.saveAndFlush(new Customer("Transfer API Customer " + sequence));
         Account account = new Account(customer, "300-000-" + sequence);
+        Account savedAccount = accountRepository.saveAndFlush(account);
         if (balance > 0) {
-            account.deposit(balance);
+            controlledFundingService.seedFunds(savedAccount.getId(), balance);
         }
-        return accountRepository.saveAndFlush(account);
+        return savedAccount;
     }
 
     private static String nextIdempotencyKey() {

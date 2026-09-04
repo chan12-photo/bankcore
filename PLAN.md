@@ -28,6 +28,7 @@ The MVP must prove:
 - Same scoped key and same request has at most one committed money effect. This is covered by replay tests.
 - Same scoped key and different request is rejected. This is covered by fingerprint conflict tests.
 - Stored account balance and journal-derived balance can be reconciled.
+- Controlled seed funding exists for test data without creating a public deposit API.
 - SQL pagination and index changes are measured with raw results.
 
 ## Idempotency Path

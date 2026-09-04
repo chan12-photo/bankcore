@@ -18,6 +18,8 @@ This is not a real banking core, general ledger, compliance system, or productio
 - Internal transfer service with rollback integration tests
 - Service-layer idempotency for internal transfer
 - Public internal transfer API requiring caller scope and idempotency key
+- Controlled seed funding service for journaled test data
+- Account balance reconciliation API
 
 Public deposit and withdrawal APIs are intentionally not exposed. Deposit and withdrawal behavior exists as domain logic for fixtures and controlled setup only; public money movement is limited to idempotent internal transfer.
 
@@ -55,6 +57,12 @@ curl -X POST http://localhost:8080/api/v1/transfers/internal \
   -H "X-Caller-Scope: portfolio-demo" \
   -H "Idempotency-Key: demo-transfer-001" \
   -d '{"sourceAccountId":1,"destinationAccountId":2,"amount":1000}'
+```
+
+Find account balance reconciliation mismatches:
+
+```bash
+curl http://localhost:8080/api/v1/reconciliation/account-balances/mismatches
 ```
 
 ## Key Documents

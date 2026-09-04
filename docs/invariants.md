@@ -10,6 +10,7 @@
 - A single requested money amount must not exceed `MoneyPolicy.MAX_AMOUNT`.
 - Stored account balance must not exceed `MoneyPolicy.MAX_BALANCE`.
 - MySQL CHECK constraints enforce the lower and upper account balance bounds.
+- Controlled seed funding must create journal evidence; direct balance mutation is allowed only in tests that intentionally prove reconciliation mismatch detection.
 
 ## Transfer
 
@@ -37,3 +38,4 @@
 - Account balance should equal total journal increases minus total journal decreases.
 - Reconciliation detects mismatches and reports them.
 - Reconciliation does not automatically repair balances.
+- Accounts created, funded, and transferred through journaled flows should not appear in reconciliation mismatch results.

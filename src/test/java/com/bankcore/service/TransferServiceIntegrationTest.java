@@ -37,6 +37,9 @@ class TransferServiceIntegrationTest {
     private TransferService transferService;
 
     @Autowired
+    private ControlledFundingService controlledFundingService;
+
+    @Autowired
     private CustomerRepository customerRepository;
 
     @Autowired
@@ -250,10 +253,11 @@ class TransferServiceIntegrationTest {
         long sequence = ACCOUNT_SEQUENCE.incrementAndGet();
         Customer customer = customerRepository.saveAndFlush(new Customer("Transfer Customer " + sequence));
         Account account = new Account(customer, "200-000-" + sequence);
+        Account savedAccount = accountRepository.saveAndFlush(account);
         if (balance > 0) {
-            account.deposit(balance);
+            controlledFundingService.seedFunds(savedAccount.getId(), balance);
         }
-        return accountRepository.saveAndFlush(account);
+        return savedAccount;
     }
 
     private static String nextIdempotencyKey() {

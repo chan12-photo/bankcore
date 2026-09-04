@@ -26,6 +26,9 @@ Completed:
 - Failed idempotent transfers roll back the idempotency record together with balances and journal rows.
 - Public internal transfer API is implemented with required `X-Caller-Scope` and `Idempotency-Key` headers.
 - Public transfer API retry tests verify same-response replay and no duplicate transfer effect.
+- Controlled seed funding service records test funds as transaction and journal rows without exposing a public deposit API.
+- Account balance reconciliation service compares stored balances against journal-derived balances.
+- Reconciliation API reports mismatched accounts for evidence and diagnostics.
 
 Current local environment:
 
@@ -40,7 +43,7 @@ Current local environment:
 ## Next Steps
 
 1. Add a controlled seed path for test funds without presenting deposit as a customer-facing money API.
-2. Add reconciliation queries that compare stored account balance against journal-derived balance.
-3. Add concurrency experiments for no-lock, optimistic lock, and pessimistic lock transfer strategies.
-4. Add raw evidence documents for rollback, idempotency replay, and schema constraints.
-5. Capture SQL query plans and pagination measurements.
+2. Add concurrency experiments for no-lock, optimistic lock, and pessimistic lock transfer strategies.
+3. Add raw evidence documents for rollback, idempotency replay, and reconciliation mismatch detection.
+4. Capture SQL query plans and pagination measurements.
+5. Add portfolio-facing ADRs that explain scope reductions and tradeoffs.
