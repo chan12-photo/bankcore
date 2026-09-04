@@ -71,3 +71,4 @@ curl http://localhost:8080/api/v1/reconciliation/account-balances/mismatches
 - [docs/status.md](docs/status.md)
 - [docs/invariants.md](docs/invariants.md)
 - [docs/threat-model.md](docs/threat-model.md)
+- [docs/evidence/2026-09-04-core-behavior.md](docs/evidence/2026-09-04-core-behavior.md)
