@@ -20,6 +20,8 @@
 - The source journal entry decreases balance and the destination journal entry increases balance.
 - Both transfer journal entries use the same amount as the financial transaction.
 - Failed transfers must leave no partial balance change, financial transaction, or journal entry.
+- Rollback tests must observe final database state outside a test-managed transaction.
+- Fault injection after journal flush must not leave committed rows.
 
 ## Idempotency
 

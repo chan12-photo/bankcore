@@ -17,6 +17,9 @@ Completed:
 - Customer creation API is implemented.
 - Account creation API is implemented.
 - Public deposit and withdrawal endpoints were removed from the MVP scope.
+- Flyway creates `financial_transaction` and `account_journal_entry` tables.
+- Internal transfer service moves money and records one transaction with two journal entries.
+- Rollback injection tests verify balance, transaction, and journal rows are all rolled back after a flushed write.
 
 Current local environment:
 
@@ -31,7 +34,7 @@ Current local environment:
 ## Next Steps
 
 1. Add a controlled seed path for test funds without presenting deposit as a customer-facing money API.
-2. Implement `FinancialTransaction` and `AccountJournalEntry`.
-3. Implement internal transfer with transaction and journal records.
-4. Add rollback injection tests that verify final database state from a separate transaction.
-5. Add CI and keep it green before expanding the feature set.
+2. Add single-transaction idempotency for internal transfer before exposing a public transfer API.
+3. Add reconciliation queries that compare stored account balance against journal-derived balance.
+4. Add concurrency experiments for no-lock, optimistic lock, and pessimistic lock transfer strategies.
+5. Capture raw SQL and test outputs for portfolio evidence.

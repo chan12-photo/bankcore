@@ -12,10 +12,12 @@ This is not a real banking core, general ledger, compliance system, or productio
 - Hibernate `ddl-auto=validate`
 - Testcontainers MySQL integration tests
 - Customer and Account domain model
+- Financial transaction and account journal domain model
 - Customer creation API
 - Account creation API
+- Internal transfer service with rollback integration tests
 
-External money-moving APIs are intentionally not exposed at this stage. Deposit and withdrawal behavior currently exists as domain logic for fixtures and future transfer implementation; the submitted external money command will be internal transfer with an idempotency contract.
+External money-moving APIs are intentionally not exposed at this stage. Deposit and withdrawal behavior exists as domain logic for fixtures and controlled setup only; the public transfer API should be added after the idempotency contract is implemented.
 
 ## Run
 

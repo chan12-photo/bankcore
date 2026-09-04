@@ -12,6 +12,7 @@ import com.bankcore.exception.InsufficientBalanceException;
 import com.bankcore.exception.InvalidAccountNumberException;
 import com.bankcore.exception.InvalidAmountException;
 import com.bankcore.exception.InvalidCustomerNameException;
+import com.bankcore.exception.SameAccountTransferException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -42,7 +43,8 @@ public class GlobalExceptionHandler {
             InsufficientBalanceException.class,
             InvalidAccountNumberException.class,
             InvalidAmountException.class,
-            InvalidCustomerNameException.class
+            InvalidCustomerNameException.class,
+            SameAccountTransferException.class
     })
     public ResponseEntity<ApiErrorResponse> handleBadRequest(RuntimeException exception) {
         return error(HttpStatus.BAD_REQUEST, ((BankCoreException) exception).getCode(), exception.getMessage());

@@ -20,8 +20,8 @@ Deposit and withdrawal are not public customer-facing APIs in the MVP. They may 
 The MVP must prove:
 
 - Account creation starts with zero balance.
-- Successful internal transfer creates one committed financial transaction and two account journal entries.
-- Failed transfer leaves no partial balance, transaction, or journal state.
+- Successful internal transfer creates one committed financial transaction and two account journal entries. This is implemented for the internal service layer.
+- Failed transfer leaves no partial balance, transaction, or journal state. This is covered by rollback injection tests after source withdrawal and after journal flush.
 - No-lock behavior can break an invariant under concurrency.
 - Optimistic and pessimistic strategies both preserve correctness under their intended tests.
 - Idempotency is scoped by caller, operation, and key.
@@ -56,3 +56,7 @@ The previous two-transaction PROCESSING model remains a later comparison experim
 ## Progress Rule
 
 Do not add optional infrastructure until the repository contains runnable code, tests, raw experiment outputs, and documentation for the current core behavior.
+
+## Current Boundary
+
+Internal transfer exists as a service-layer behavior only. A public transfer API should be added after the idempotency table, request fingerprint, and replay/reject behavior are implemented.
