@@ -90,6 +90,41 @@ public class Account {
         return updatedAt;
     }
 
+    public void deposit(long amount) {
+        validatePositiveAmount(amount);
+        validateActive();
+        balance = Math.addExact(balance, amount);
+    }
+
+    public void withdraw(long amount) {
+        validatePositiveAmount(amount);
+        validateActive();
+        if (balance < amount) {
+            throw new IllegalStateException("Insufficient balance.");
+        }
+        balance -= amount;
+    }
+
+    public void freeze() {
+        status = AccountStatus.FROZEN;
+    }
+
+    public void close() {
+        status = AccountStatus.CLOSED;
+    }
+
+    private void validateActive() {
+        if (status != AccountStatus.ACTIVE) {
+            throw new IllegalStateException("Account is not active.");
+        }
+    }
+
+    private static void validatePositiveAmount(long amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+    }
+
     private static String requireText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " must not be blank");
