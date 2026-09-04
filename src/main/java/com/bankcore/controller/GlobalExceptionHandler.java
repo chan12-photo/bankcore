@@ -16,6 +16,7 @@ import com.bankcore.exception.InvalidCustomerNameException;
 import com.bankcore.exception.InvalidIdempotencyRequestException;
 import com.bankcore.exception.InvalidPageRequestException;
 import com.bankcore.exception.SameAccountTransferException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IdempotencyKeyConflictException.class)
     public ResponseEntity<ApiErrorResponse> handleIdempotencyKeyConflict(IdempotencyKeyConflictException exception) {
         return error(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage());
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLockingFailure(
+            OptimisticLockingFailureException exception
+    ) {
+        return error(
+                HttpStatus.CONFLICT,
+                "CONCURRENT_MODIFICATION",
+                "Account state changed while processing the request. Retry the same request with the same idempotency key."
+        );
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)

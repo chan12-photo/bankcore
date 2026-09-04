@@ -9,6 +9,7 @@ This pass closes review findings that could otherwise weaken the portfolio story
 - Public request validation should reject values that exceed database column or check-constraint limits before persistence.
 - The local walkthrough should provide a repeatable way to run a successful transfer without exposing a public deposit API.
 - The pagination benchmark seed script should include the same offset comparison query described in evidence.
+- Optimistic locking failures should return a stable conflict response instead of leaking as a generic server error.
 
 ## Validation Commands
 
@@ -30,7 +31,7 @@ Result:
 
 ```text
 BUILD SUCCESSFUL
-tests=55 failures=0 errors=0 skipped=0
+tests=56 failures=0 errors=0 skipped=0
 ```
 
 Docker was running locally for Testcontainers:
@@ -141,11 +142,19 @@ The `demo` Spring profile creates two synthetic journal-funded accounts:
 
 `scripts/sql/seed-journal-pagination-benchmark.sql` now includes the offset `EXPLAIN ANALYZE` query used in `docs/evidence/2026-09-04-journal-pagination-benchmark.md`, so the seed script and evidence document describe the same benchmark comparison.
 
+### Optimistic Conflict API Response
+
+Spring optimistic locking failures are now mapped to:
+
+```json
+{
+  "code": "CONCURRENT_MODIFICATION",
+  "message": "Account state changed while processing the request. Retry the same request with the same idempotency key."
+}
+```
+
+This intentionally chooses a clear `409 CONFLICT` API policy for stale concurrent writes. The caller can retry the same idempotent request safely, while the server avoids hiding a concurrency conflict behind a generic `500`.
+
 ## Remaining Deliberate Choice
 
-The main remaining product/operations choice is optimistic-lock conflict behavior. The current project already demonstrates optimistic and pessimistic concurrency correctness in tests. A later production-style API could either:
-
-- Return a clear conflict response when an optimistic stale write loses.
-- Add bounded retry in a fresh transaction for selected retry-safe operations.
-
-This is intentionally left as a scope decision rather than mixed into the current transfer API without a stronger product requirement.
+A later production-style API could add bounded retry for selected optimistic-lock conflicts, but that should be tied to an explicit product requirement. The current portfolio scope keeps the conflict visible and documented instead of silently retrying every stale write.

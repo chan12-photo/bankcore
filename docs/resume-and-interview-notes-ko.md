@@ -45,7 +45,7 @@ service 내부에 테스트용 failure point를 두고 출금 직후, 그리고 
 
 ### optimistic lock과 pessimistic lock 차이를 어떻게 보여줬나요?
 
-optimistic lock 실험은 두 트랜잭션이 같은 version을 읽은 뒤 동시에 갱신하게 만들어 하나만 commit되고 하나는 rollback되는 결과를 확인했습니다. pessimistic lock 실험은 source account row를 `PESSIMISTIC_WRITE`로 잠가 두 번째 요청이 첫 번째 commit 이후 최신 잔액을 보게 만들었습니다.
+optimistic lock 실험은 두 트랜잭션이 같은 version을 읽은 뒤 동시에 갱신하게 만들어 하나만 commit되고 하나는 rollback되는 결과를 확인했습니다. API 경계에서는 이런 optimistic locking 실패를 `CONCURRENT_MODIFICATION` 409 응답으로 변환해 재시도 가능한 충돌로 표현했습니다. pessimistic lock 실험은 source account row를 `PESSIMISTIC_WRITE`로 잠가 두 번째 요청이 첫 번째 commit 이후 최신 잔액을 보게 만들었습니다.
 
 ### reconciliation은 왜 넣었나요?
 

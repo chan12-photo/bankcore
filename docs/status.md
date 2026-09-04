@@ -34,6 +34,7 @@ Completed:
 - Reconciliation API reports mismatched accounts for evidence and diagnostics.
 - Test-only unsafe no-lock race experiment demonstrates stale-balance overwrite and reconciliation mismatch.
 - Test-only optimistic locking race experiment demonstrates one successful transfer, one rolled-back transfer, and no reconciliation mismatch.
+- Optimistic locking failures are mapped to a stable `409 CONFLICT` API response instead of leaking as a generic server error.
 - Test-only pessimistic write lock race experiment demonstrates row-level serialization and no reconciliation mismatch.
 - Transfer API returns stable `ApiErrorResponse` bodies for missing headers and malformed request bodies.
 - Request DTOs use Bean Validation for required fields and positive transfer amounts.
@@ -62,7 +63,7 @@ Current local environment:
 
 ## Next Steps
 
-1. Decide whether optimistic locking conflicts should remain a clear 409-style operational policy or gain bounded retry behavior.
+1. Add bounded retry for selected optimistic-lock conflicts only if the project scope expands toward production-style operations.
 2. Add production-style authentication and authorization only if the project scope expands beyond portfolio evidence.
 3. Add optional OpenAPI documentation if this becomes a submitted API project.
 4. Choose the final resume bullet wording based on the target role.
