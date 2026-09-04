@@ -8,10 +8,12 @@ import com.bankcore.exception.BankCoreException;
 import com.bankcore.exception.BalanceLimitExceededException;
 import com.bankcore.exception.CustomerNotFoundException;
 import com.bankcore.exception.DuplicateAccountNumberException;
+import com.bankcore.exception.IdempotencyKeyConflictException;
 import com.bankcore.exception.InsufficientBalanceException;
 import com.bankcore.exception.InvalidAccountNumberException;
 import com.bankcore.exception.InvalidAmountException;
 import com.bankcore.exception.InvalidCustomerNameException;
+import com.bankcore.exception.InvalidIdempotencyRequestException;
 import com.bankcore.exception.SameAccountTransferException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +38,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage());
     }
 
+    @ExceptionHandler(IdempotencyKeyConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleIdempotencyKeyConflict(IdempotencyKeyConflictException exception) {
+        return error(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage());
+    }
+
     @ExceptionHandler({
             AccountNotActiveException.class,
             AmountLimitExceededException.class,
@@ -44,6 +51,7 @@ public class GlobalExceptionHandler {
             InvalidAccountNumberException.class,
             InvalidAmountException.class,
             InvalidCustomerNameException.class,
+            InvalidIdempotencyRequestException.class,
             SameAccountTransferException.class
     })
     public ResponseEntity<ApiErrorResponse> handleBadRequest(RuntimeException exception) {

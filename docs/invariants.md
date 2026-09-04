@@ -26,9 +26,11 @@
 ## Idempotency
 
 - The idempotency identity is scoped by caller, operation, and client-provided key.
-- The request fingerprint includes operation, currency, source account, destination account, and amount.
+- The request fingerprint includes fingerprint version, operation, currency, source account, destination account, and amount.
 - Same scoped key with the same fingerprint has at most one committed money effect.
 - Same scoped key with a different fingerprint is rejected.
+- Failed single-transaction idempotent transfers leave no committed idempotency record.
+- Completed idempotency records reference the committed response transaction.
 
 ## Reconciliation
 

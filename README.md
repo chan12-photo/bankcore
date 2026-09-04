@@ -16,8 +16,9 @@ This is not a real banking core, general ledger, compliance system, or productio
 - Customer creation API
 - Account creation API
 - Internal transfer service with rollback integration tests
+- Service-layer idempotency for internal transfer
 
-External money-moving APIs are intentionally not exposed at this stage. Deposit and withdrawal behavior exists as domain logic for fixtures and controlled setup only; the public transfer API should be added after the idempotency contract is implemented.
+External money-moving APIs are intentionally not exposed at this stage. Deposit and withdrawal behavior exists as domain logic for fixtures and controlled setup only; the public transfer API should be added after the HTTP contract requires caller scope and idempotency key.
 
 ## Run
 

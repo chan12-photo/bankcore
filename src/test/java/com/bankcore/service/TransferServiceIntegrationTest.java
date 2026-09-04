@@ -3,13 +3,17 @@ package com.bankcore.service;
 import com.bankcore.domain.Account;
 import com.bankcore.domain.AccountJournalEntry;
 import com.bankcore.domain.Customer;
+import com.bankcore.domain.IdempotencyStatus;
 import com.bankcore.domain.JournalMovementType;
+import com.bankcore.exception.IdempotencyKeyConflictException;
 import com.bankcore.exception.InsufficientBalanceException;
+import com.bankcore.exception.InvalidIdempotencyRequestException;
 import com.bankcore.exception.SameAccountTransferException;
 import com.bankcore.repository.AccountJournalEntryRepository;
 import com.bankcore.repository.AccountRepository;
 import com.bankcore.repository.CustomerRepository;
 import com.bankcore.repository.FinancialTransactionRepository;
+import com.bankcore.repository.IdempotencyRecordRepository;
 import com.bankcore.support.MySqlContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +47,9 @@ class TransferServiceIntegrationTest {
 
     @Autowired
     private AccountJournalEntryRepository accountJournalEntryRepository;
+
+    @Autowired
+    private IdempotencyRecordRepository idempotencyRecordRepository;
 
     @Test
     void transferInternal_shouldMoveMoneyAndRecordBalancedJournalEntries() {
@@ -138,6 +145,107 @@ class TransferServiceIntegrationTest {
         )).isInstanceOf(InsufficientBalanceException.class);
     }
 
+    @Test
+    void transferInternalIdempotent_shouldReplayCommittedResult_whenSameRequestIsRetried() {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+        long transactionCountBefore = financialTransactionRepository.count();
+        long journalCountBefore = accountJournalEntryRepository.count();
+        long idempotencyCountBefore = idempotencyRecordRepository.count();
+        String idempotencyKey = nextIdempotencyKey();
+
+        InternalTransferResult firstResult = transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L
+        );
+        InternalTransferResult replayedResult = transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L
+        );
+
+        assertThat(replayedResult).isEqualTo(firstResult);
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(7_000L);
+        assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance()).isEqualTo(5_000L);
+        assertThat(financialTransactionRepository.count()).isEqualTo(transactionCountBefore + 1);
+        assertThat(accountJournalEntryRepository.count()).isEqualTo(journalCountBefore + 2);
+        assertThat(idempotencyRecordRepository.count()).isEqualTo(idempotencyCountBefore + 1);
+        assertThat(idempotencyRecordRepository.findAll())
+                .filteredOn(record -> record.getIdempotencyKey().equals(idempotencyKey))
+                .singleElement()
+                .extracting("status")
+                .isEqualTo(IdempotencyStatus.COMPLETED);
+    }
+
+    @Test
+    void transferInternalIdempotent_shouldRejectSameKeyWithDifferentFingerprint() {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+        String idempotencyKey = nextIdempotencyKey();
+
+        transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L
+        );
+
+        assertThatThrownBy(() -> transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                4_000L
+        )).isInstanceOf(IdempotencyKeyConflictException.class);
+
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(7_000L);
+        assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance()).isEqualTo(5_000L);
+    }
+
+    @Test
+    void transferInternalIdempotent_shouldRollbackIdempotencyRecord_whenTransferFails() {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+        long transactionCountBefore = financialTransactionRepository.count();
+        long journalCountBefore = accountJournalEntryRepository.count();
+        long idempotencyCountBefore = idempotencyRecordRepository.count();
+
+        assertThatThrownBy(() -> transferService.transferInternalIdempotent(
+                "integration-test",
+                nextIdempotencyKey(),
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L,
+                TransferFailurePoint.AFTER_JOURNAL_FLUSH
+        )).isInstanceOf(TransferFaultInjectedException.class);
+
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(10_000L);
+        assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance()).isEqualTo(2_000L);
+        assertThat(financialTransactionRepository.count()).isEqualTo(transactionCountBefore);
+        assertThat(accountJournalEntryRepository.count()).isEqualTo(journalCountBefore);
+        assertThat(idempotencyRecordRepository.count()).isEqualTo(idempotencyCountBefore);
+    }
+
+    @Test
+    void transferInternalIdempotent_shouldRejectBlankIdempotencyKey() {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        assertThatThrownBy(() -> transferService.transferInternalIdempotent(
+                "integration-test",
+                " ",
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L
+        )).isInstanceOf(InvalidIdempotencyRequestException.class);
+    }
+
     private Account createAccountWithBalance(long balance) {
         long sequence = ACCOUNT_SEQUENCE.incrementAndGet();
         Customer customer = customerRepository.saveAndFlush(new Customer("Transfer Customer " + sequence));
@@ -146,5 +254,9 @@ class TransferServiceIntegrationTest {
             account.deposit(balance);
         }
         return accountRepository.saveAndFlush(account);
+    }
+
+    private static String nextIdempotencyKey() {
+        return "idem-" + ACCOUNT_SEQUENCE.incrementAndGet();
     }
 }

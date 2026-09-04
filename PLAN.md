@@ -24,9 +24,9 @@ The MVP must prove:
 - Failed transfer leaves no partial balance, transaction, or journal state. This is covered by rollback injection tests after source withdrawal and after journal flush.
 - No-lock behavior can break an invariant under concurrency.
 - Optimistic and pessimistic strategies both preserve correctness under their intended tests.
-- Idempotency is scoped by caller, operation, and key.
-- Same scoped key and same request has at most one committed money effect.
-- Same scoped key and different request is rejected.
+- Idempotency is scoped by caller, operation, and key. This is implemented at the service layer for internal transfer.
+- Same scoped key and same request has at most one committed money effect. This is covered by replay tests.
+- Same scoped key and different request is rejected. This is covered by fingerprint conflict tests.
 - Stored account balance and journal-derived balance can be reconciled.
 - SQL pagination and index changes are measured with raw results.
 
@@ -59,4 +59,4 @@ Do not add optional infrastructure until the repository contains runnable code, 
 
 ## Current Boundary
 
-Internal transfer exists as a service-layer behavior only. A public transfer API should be added after the idempotency table, request fingerprint, and replay/reject behavior are implemented.
+Internal transfer and single-transaction idempotency exist as service-layer behavior only. A public transfer API should be added after the request and response contract clearly requires caller scope and idempotency key.
