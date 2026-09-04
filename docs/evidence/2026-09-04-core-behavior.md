@@ -21,6 +21,16 @@ BUILD SUCCESSFUL
 4 actionable tasks: 4 executed
 ```
 
+GitHub Actions CI on `main` after push:
+
+```text
+completed  success  docs: add portfolio architecture decisions       CI  main  push
+completed  success  feat: add account journal keyset pagination      CI  main  push
+completed  success  test: stabilize transfer api error responses     CI  main  push
+completed  success  test: add pessimistic locking transfer race      CI  main  push
+completed  success  test: add optimistic locking transfer race       CI  main  push
+```
+
 ```bash
 ./gradlew bootRun --no-daemon
 ```
