@@ -37,9 +37,11 @@ Completed:
 - Account journal keyset pagination API is implemented.
 - Flyway creates `idx_account_journal_account_id_id(account_id, id)` for account journal lookup.
 - Local SQL evidence confirms the journal pagination index is present and usable.
+- Synthetic 50,000-row journal pagination benchmark compares keyset pagination with offset pagination.
 - ADRs document the scope reduction, idempotency requirement, and reconciliation decision.
 - GitHub Actions CI is green on the latest pushed `main` commits.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
+- Korean portfolio write-up is captured in `docs/portfolio-writeup-ko.md`.
 
 Current local environment:
 
@@ -55,6 +57,6 @@ Current local environment:
 
 1. Add a controlled seed path for test funds without presenting deposit as a customer-facing money API.
 2. Capture larger pagination measurements with seeded journal volume.
-3. Add larger synthetic-data SQL measurements.
-4. Add a short portfolio write-up that explains the experiments in interview language.
-5. Add optional OpenAPI documentation if this becomes a submitted API project.
+3. Add optional OpenAPI documentation if this becomes a submitted API project.
+4. Prepare final resume bullets after choosing the target role wording.
+5. Add a cleanup command for local benchmark data if repeated measurements become frequent.

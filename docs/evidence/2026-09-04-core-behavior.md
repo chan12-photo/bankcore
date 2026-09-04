@@ -85,6 +85,7 @@ Result on the local development database after journaled flows:
 - The pessimistic write lock experiment makes the second transfer observe the latest balance and roll back without reconciliation mismatches.
 - Account journal keyset pagination is available at `GET /api/v1/accounts/{accountId}/journal-entries`.
 - The account journal query is backed by `idx_account_journal_account_id_id(account_id, id)`.
+- Larger synthetic pagination evidence is captured in `docs/evidence/2026-09-04-journal-pagination-benchmark.md`.
 
 ## SQL Evidence
 
