@@ -1,5 +1,7 @@
 package com.bankcore.domain;
 
+import com.bankcore.exception.AccountNotActiveException;
+import com.bankcore.exception.InsufficientBalanceException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -91,16 +93,18 @@ public class Account {
     }
 
     public void deposit(long amount) {
-        validatePositiveAmount(amount);
+        MoneyPolicy.requireValidAmount(amount);
         validateActive();
-        balance = Math.addExact(balance, amount);
+        long nextBalance = Math.addExact(balance, amount);
+        MoneyPolicy.requireValidBalance(nextBalance);
+        balance = nextBalance;
     }
 
     public void withdraw(long amount) {
-        validatePositiveAmount(amount);
+        MoneyPolicy.requireValidAmount(amount);
         validateActive();
         if (balance < amount) {
-            throw new IllegalStateException("Insufficient balance.");
+            throw new InsufficientBalanceException();
         }
         balance -= amount;
     }
@@ -115,13 +119,7 @@ public class Account {
 
     private void validateActive() {
         if (status != AccountStatus.ACTIVE) {
-            throw new IllegalStateException("Account is not active.");
-        }
-    }
-
-    private static void validatePositiveAmount(long amount) {
-        if (amount <= 0) {
-            throw new IllegalArgumentException("amount must be positive");
+            throw new AccountNotActiveException(status);
         }
     }
 

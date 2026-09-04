@@ -3,11 +3,11 @@ package com.bankcore;
 import com.bankcore.support.MySqlContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.boot.testcontainers.context.ImportTestcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest
-class BankcoreApplicationTests extends MySqlContainerSupport {
+@ImportTestcontainers(MySqlContainerSupport.class)
+class BankcoreApplicationTests {
 
     @Test
     void contextLoads() {

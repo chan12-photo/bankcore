@@ -3,12 +3,15 @@ package com.bankcore.controller;
 import com.bankcore.controller.dto.ApiErrorResponse;
 import com.bankcore.exception.AccountNotActiveException;
 import com.bankcore.exception.AccountNotFoundException;
+import com.bankcore.exception.AmountLimitExceededException;
 import com.bankcore.exception.BankCoreException;
+import com.bankcore.exception.BalanceLimitExceededException;
 import com.bankcore.exception.CustomerNotFoundException;
 import com.bankcore.exception.DuplicateAccountNumberException;
 import com.bankcore.exception.InsufficientBalanceException;
 import com.bankcore.exception.InvalidAccountNumberException;
 import com.bankcore.exception.InvalidAmountException;
+import com.bankcore.exception.InvalidCustomerNameException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -34,9 +37,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             AccountNotActiveException.class,
+            AmountLimitExceededException.class,
+            BalanceLimitExceededException.class,
             InsufficientBalanceException.class,
             InvalidAccountNumberException.class,
-            InvalidAmountException.class
+            InvalidAmountException.class,
+            InvalidCustomerNameException.class
     })
     public ResponseEntity<ApiErrorResponse> handleBadRequest(RuntimeException exception) {
         return error(HttpStatus.BAD_REQUEST, ((BankCoreException) exception).getCode(), exception.getMessage());

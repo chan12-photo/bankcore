@@ -8,16 +8,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.testcontainers.context.ImportTestcontainers;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@Testcontainers(disabledWithoutDocker = true)
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class AccountRepositoryTest extends MySqlContainerSupport {
+@ImportTestcontainers(MySqlContainerSupport.class)
+class AccountRepositoryTest {
 
     @Autowired
     private CustomerRepository customerRepository;
@@ -61,5 +61,16 @@ class AccountRepositoryTest extends MySqlContainerSupport {
                 VALUES (?, ?, ?, ?, ?)
                 """, customerId, "100-000-000003", -1L, "ACTIVE", 0L))
                 .hasMessageContaining("chk_account_balance_non_negative");
+    }
+
+    @Test
+    void database_shouldRejectBalanceAboveLimit() {
+        Long customerId = customerRepository.saveAndFlush(new Customer("Chanil Park")).getId();
+
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO account (customer_id, account_number, balance, status, version)
+                VALUES (?, ?, ?, ?, ?)
+                """, customerId, "100-000-000004", 100_000_000_000_001L, "ACTIVE", 0L))
+                .hasMessageContaining("chk_account_balance_upper_bound");
     }
 }

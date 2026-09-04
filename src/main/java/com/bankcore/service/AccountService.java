@@ -4,13 +4,13 @@ import com.bankcore.controller.dto.AccountResponse;
 import com.bankcore.domain.Account;
 import com.bankcore.domain.AccountStatus;
 import com.bankcore.domain.Customer;
+import com.bankcore.domain.MoneyPolicy;
 import com.bankcore.exception.AccountNotActiveException;
 import com.bankcore.exception.AccountNotFoundException;
 import com.bankcore.exception.CustomerNotFoundException;
 import com.bankcore.exception.DuplicateAccountNumberException;
 import com.bankcore.exception.InsufficientBalanceException;
 import com.bankcore.exception.InvalidAccountNumberException;
-import com.bankcore.exception.InvalidAmountException;
 import com.bankcore.repository.AccountRepository;
 import com.bankcore.repository.CustomerRepository;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -50,7 +50,7 @@ public class AccountService {
     @Transactional
     public AccountResponse deposit(Long accountId, Long amount) {
         Account account = findAccount(accountId);
-        long validAmount = validateAmount(amount);
+        long validAmount = MoneyPolicy.requireValidAmount(amount);
         ensureActive(account);
 
         account.deposit(validAmount);
@@ -61,7 +61,7 @@ public class AccountService {
     @Transactional
     public AccountResponse withdraw(Long accountId, Long amount) {
         Account account = findAccount(accountId);
-        long validAmount = validateAmount(amount);
+        long validAmount = MoneyPolicy.requireValidAmount(amount);
         ensureActive(account);
         if (account.getBalance() < validAmount) {
             throw new InsufficientBalanceException();
@@ -90,13 +90,6 @@ public class AccountService {
         if (accountNumber == null || accountNumber.isBlank()) {
             throw new InvalidAccountNumberException();
         }
-    }
-
-    private static long validateAmount(Long amount) {
-        if (amount == null || amount <= 0) {
-            throw new InvalidAmountException();
-        }
-        return amount;
     }
 
     private static void ensureActive(Account account) {
