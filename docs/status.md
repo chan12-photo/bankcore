@@ -24,6 +24,8 @@ Completed:
 - Service-layer idempotent internal transfer replays the committed result for the same request.
 - Service-layer idempotent internal transfer rejects the same key with a different request fingerprint.
 - Failed idempotent transfers roll back the idempotency record together with balances and journal rows.
+- Public internal transfer API is implemented with required `X-Caller-Scope` and `Idempotency-Key` headers.
+- Public transfer API retry tests verify same-response replay and no duplicate transfer effect.
 
 Current local environment:
 
@@ -38,7 +40,7 @@ Current local environment:
 ## Next Steps
 
 1. Add a controlled seed path for test funds without presenting deposit as a customer-facing money API.
-2. Add a public transfer API only after request/response DTOs include the idempotency key contract.
-3. Add reconciliation queries that compare stored account balance against journal-derived balance.
-4. Add concurrency experiments for no-lock, optimistic lock, and pessimistic lock transfer strategies.
-5. Capture raw SQL and test outputs for portfolio evidence.
+2. Add reconciliation queries that compare stored account balance against journal-derived balance.
+3. Add concurrency experiments for no-lock, optimistic lock, and pessimistic lock transfer strategies.
+4. Add raw evidence documents for rollback, idempotency replay, and schema constraints.
+5. Capture SQL query plans and pagination measurements.

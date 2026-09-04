@@ -17,8 +17,9 @@ This is not a real banking core, general ledger, compliance system, or productio
 - Account creation API
 - Internal transfer service with rollback integration tests
 - Service-layer idempotency for internal transfer
+- Public internal transfer API requiring caller scope and idempotency key
 
-External money-moving APIs are intentionally not exposed at this stage. Deposit and withdrawal behavior exists as domain logic for fixtures and controlled setup only; the public transfer API should be added after the HTTP contract requires caller scope and idempotency key.
+Public deposit and withdrawal APIs are intentionally not exposed. Deposit and withdrawal behavior exists as domain logic for fixtures and controlled setup only; public money movement is limited to idempotent internal transfer.
 
 ## Run
 
@@ -44,6 +45,16 @@ curl -X POST http://localhost:8080/api/v1/customers \
 curl -X POST http://localhost:8080/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{"customerId":1,"accountNumber":"100-000-000001"}'
+```
+
+Idempotent internal transfer:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/transfers/internal \
+  -H "Content-Type: application/json" \
+  -H "X-Caller-Scope: portfolio-demo" \
+  -H "Idempotency-Key: demo-transfer-001" \
+  -d '{"sourceAccountId":1,"destinationAccountId":2,"amount":1000}'
 ```
 
 ## Key Documents

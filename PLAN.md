@@ -59,4 +59,4 @@ Do not add optional infrastructure until the repository contains runnable code, 
 
 ## Current Boundary
 
-Internal transfer and single-transaction idempotency exist as service-layer behavior only. A public transfer API should be added after the request and response contract clearly requires caller scope and idempotency key.
+Internal transfer is exposed through a public HTTP endpoint only with the idempotency contract. Public deposit and withdrawal endpoints remain out of scope.
