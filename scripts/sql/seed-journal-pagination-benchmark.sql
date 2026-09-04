@@ -62,3 +62,10 @@ WHERE account_id = @account_id
   AND id < @before_entry_id
 ORDER BY id DESC
 LIMIT 20;
+
+EXPLAIN ANALYZE
+SELECT id, transaction_id, entry_no, movement_type, amount, balance_after, created_at
+FROM account_journal_entry
+WHERE account_id = @account_id
+ORDER BY id DESC
+LIMIT 20 OFFSET 25000;

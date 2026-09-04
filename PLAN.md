@@ -25,7 +25,7 @@ The MVP must prove:
 - No-lock behavior can break an invariant under concurrency.
 - Optimistic and pessimistic strategies both preserve correctness under their intended tests.
 - Idempotency is scoped by caller, operation, and key. This is implemented at the service layer for internal transfer.
-- Same scoped key and same request has at most one committed money effect. This is covered by replay tests.
+- Same scoped key and same request has at most one committed money effect. This is covered by replay tests and a concurrent same-key integration test.
 - Same scoped key and different request is rejected. This is covered by fingerprint conflict tests.
 - Stored account balance and journal-derived balance can be reconciled.
 - Controlled seed funding exists for test data without creating a public deposit API.
@@ -43,6 +43,8 @@ The first implementation target is a single-transaction MVP:
 6. Persist the terminal idempotency result in the same database transaction.
 
 The previous two-transaction PROCESSING model remains a later comparison experiment. It is useful, but it introduces progress and recovery questions that should not block the first interview-ready MVP.
+
+The current implementation also recovers from a concurrent unique-key race by replaying the winning idempotency record in a fresh transaction. This keeps the single-transaction MVP while avoiding duplicate transfer effects and avoiding a raw database constraint error response for same-key retries.
 
 ## Non-Goals
 

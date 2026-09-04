@@ -2,14 +2,9 @@ package com.bankcore.service;
 
 import com.bankcore.controller.dto.AccountResponse;
 import com.bankcore.domain.Account;
-import com.bankcore.domain.AccountStatus;
 import com.bankcore.domain.Customer;
-import com.bankcore.domain.MoneyPolicy;
-import com.bankcore.exception.AccountNotActiveException;
-import com.bankcore.exception.AccountNotFoundException;
 import com.bankcore.exception.CustomerNotFoundException;
 import com.bankcore.exception.DuplicateAccountNumberException;
-import com.bankcore.exception.InsufficientBalanceException;
 import com.bankcore.exception.InvalidAccountNumberException;
 import com.bankcore.repository.AccountRepository;
 import com.bankcore.repository.CustomerRepository;
@@ -47,39 +42,6 @@ public class AccountService {
         }
     }
 
-    @Transactional
-    public AccountResponse deposit(Long accountId, Long amount) {
-        Account account = findAccount(accountId);
-        long validAmount = MoneyPolicy.requireValidAmount(amount);
-        ensureActive(account);
-
-        account.deposit(validAmount);
-
-        return toResponse(account);
-    }
-
-    @Transactional
-    public AccountResponse withdraw(Long accountId, Long amount) {
-        Account account = findAccount(accountId);
-        long validAmount = MoneyPolicy.requireValidAmount(amount);
-        ensureActive(account);
-        if (account.getBalance() < validAmount) {
-            throw new InsufficientBalanceException();
-        }
-
-        account.withdraw(validAmount);
-
-        return toResponse(account);
-    }
-
-    private Account findAccount(Long accountId) {
-        if (accountId == null) {
-            throw new AccountNotFoundException(null);
-        }
-        return accountRepository.findById(accountId)
-                .orElseThrow(() -> new AccountNotFoundException(accountId));
-    }
-
     private static void validateCustomerId(Long customerId) {
         if (customerId == null) {
             throw new CustomerNotFoundException(null);
@@ -89,13 +51,6 @@ public class AccountService {
     private static void validateAccountNumber(String accountNumber) {
         if (accountNumber == null || accountNumber.isBlank()) {
             throw new InvalidAccountNumberException();
-        }
-    }
-
-    private static void ensureActive(Account account) {
-        AccountStatus status = account.getStatus();
-        if (status != AccountStatus.ACTIVE) {
-            throw new AccountNotActiveException(status);
         }
     }
 

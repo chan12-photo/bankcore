@@ -72,6 +72,7 @@ Result on the local development database after journaled flows:
 - Runtime failure after flushed transaction and journal writes rolls back balances, transaction rows, and journal rows.
 - Idempotent internal transfer uses `caller_scope + operation + idempotency_key` as its unique identity.
 - Repeating the same idempotency key with the same request returns the same transfer result without a duplicate money effect.
+- Concurrent same-key idempotent transfer hardening is captured separately in `docs/evidence/2026-09-05-hardening.md`.
 - Repeating the same idempotency key with a different request fingerprint is rejected.
 - Failed idempotent transfer rolls back the idempotency record together with transfer state.
 - Missing idempotency headers and malformed JSON return stable `ApiErrorResponse` bodies.

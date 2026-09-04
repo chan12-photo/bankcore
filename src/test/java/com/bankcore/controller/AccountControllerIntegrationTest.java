@@ -78,12 +78,34 @@ class AccountControllerIntegrationTest {
     }
 
     @Test
+    void createAccount_shouldRejectNegativeCustomerId() throws Exception {
+        mockMvc.perform(post("/api/v1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createAccountJson(-1L, nextAccountNumber())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Invalid request field: customerId"));
+    }
+
+    @Test
     void createAccount_shouldRejectBlankAccountNumber() throws Exception {
         Long customerId = createCustomer();
 
         mockMvc.perform(post("/api/v1/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createAccountJson(customerId, " ")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Invalid request field: accountNumber"));
+    }
+
+    @Test
+    void createAccount_shouldRejectAccountNumberLongerThanDatabaseLimit() throws Exception {
+        Long customerId = createCustomer();
+
+        mockMvc.perform(post("/api/v1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createAccountJson(customerId, "1".repeat(31))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.message").value("Invalid request field: accountNumber"));

@@ -38,7 +38,69 @@ Health check:
 curl http://localhost:8080/api/v1/health
 ```
 
-Create a synthetic customer and account:
+## Quick Demo
+
+Use the `demo` profile when you want a clean portfolio walkthrough with two pre-funded synthetic accounts.
+
+```bash
+docker compose up -d
+SPRING_PROFILES_ACTIVE=demo ./gradlew bootRun
+```
+
+In another terminal:
+
+```bash
+curl http://localhost:8080/api/v1/demo/accounts
+```
+
+Example response:
+
+```json
+[
+  {
+    "accountId": 1,
+    "customerId": 1,
+    "customerName": "Alice Demo",
+    "accountNumber": "DEMO-ALICE-001",
+    "balance": 100000
+  },
+  {
+    "accountId": 2,
+    "customerId": 2,
+    "customerName": "Bob Demo",
+    "accountNumber": "DEMO-BOB-001",
+    "balance": 30000
+  }
+]
+```
+
+Then transfer money using the returned account ids:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/transfers/internal \
+  -H "Content-Type: application/json" \
+  -H "X-Caller-Scope: portfolio-demo" \
+  -H "Idempotency-Key: demo-transfer-001" \
+  -d '{"sourceAccountId":1,"destinationAccountId":2,"amount":1000}'
+```
+
+Send the exact same request again to verify idempotent replay. The response should contain the same `transactionId` and `transactionKey`, and the money effect should not be duplicated.
+
+Check reconciliation after the transfer:
+
+```bash
+curl http://localhost:8080/api/v1/reconciliation/account-balances/mismatches
+```
+
+A healthy journaled flow returns:
+
+```json
+[]
+```
+
+## Manual API Flow
+
+Create a synthetic customer and zero-balance account:
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/customers \
@@ -50,7 +112,11 @@ curl -X POST http://localhost:8080/api/v1/accounts \
   -d '{"customerId":1,"accountNumber":"100-000-000001"}'
 ```
 
-Idempotent internal transfer:
+Account numbers are unique. If the same account number already exists, the API returns `DUPLICATE_ACCOUNT_NUMBER`.
+
+New accounts intentionally start at `balance = 0`. The normal public API does not expose deposit or withdrawal, so use the demo profile for a ready-to-transfer walkthrough.
+
+Idempotent internal transfer request shape:
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/transfers/internal \
@@ -81,6 +147,7 @@ curl "http://localhost:8080/api/v1/accounts/1/journal-entries?beforeEntryId=100&
 - [docs/threat-model.md](docs/threat-model.md)
 - [docs/evidence/2026-09-04-core-behavior.md](docs/evidence/2026-09-04-core-behavior.md)
 - [docs/evidence/2026-09-04-journal-pagination-benchmark.md](docs/evidence/2026-09-04-journal-pagination-benchmark.md)
+- [docs/evidence/2026-09-05-hardening.md](docs/evidence/2026-09-05-hardening.md)
 - [docs/portfolio-writeup-ko.md](docs/portfolio-writeup-ko.md)
 - [docs/resume-and-interview-notes-ko.md](docs/resume-and-interview-notes-ko.md)
 - [docs/adr/0001-scope-as-transfer-correctness-backend.md](docs/adr/0001-scope-as-transfer-correctness-backend.md)

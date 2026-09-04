@@ -6,6 +6,10 @@ public class InvalidIdempotencyRequestException extends RuntimeException impleme
         super(fieldName + " must not be blank.");
     }
 
+    public InvalidIdempotencyRequestException(String fieldName, int maxLength) {
+        super(fieldName + " length must be at most " + maxLength + ".");
+    }
+
     @Override
     public String getCode() {
         return "INVALID_IDEMPOTENCY_REQUEST";

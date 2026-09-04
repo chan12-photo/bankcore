@@ -205,6 +205,51 @@ class TransferControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Invalid request field: amount"));
     }
 
+    @Test
+    void internalTransfer_shouldRejectAmountAboveDatabaseLimitWithValidationError() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        mockMvc.perform(post("/api/v1/transfers/internal")
+                        .header("X-Caller-Scope", "controller-test")
+                        .header("Idempotency-Key", nextIdempotencyKey())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(sourceAccount.getId(), destinationAccount.getId(), 1_000_000_000_001L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Invalid request field: amount"));
+    }
+
+    @Test
+    void internalTransfer_shouldRejectCallerScopeLongerThanDatabaseLimit() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        mockMvc.perform(post("/api/v1/transfers/internal")
+                        .header("X-Caller-Scope", "c".repeat(101))
+                        .header("Idempotency-Key", nextIdempotencyKey())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(sourceAccount.getId(), destinationAccount.getId(), 3_000L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_IDEMPOTENCY_REQUEST"))
+                .andExpect(jsonPath("$.message").value("callerScope length must be at most 100."));
+    }
+
+    @Test
+    void internalTransfer_shouldRejectIdempotencyKeyLongerThanDatabaseLimit() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        mockMvc.perform(post("/api/v1/transfers/internal")
+                        .header("X-Caller-Scope", "controller-test")
+                        .header("Idempotency-Key", "i".repeat(121))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(sourceAccount.getId(), destinationAccount.getId(), 3_000L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_IDEMPOTENCY_REQUEST"))
+                .andExpect(jsonPath("$.message").value("idempotencyKey length must be at most 120."));
+    }
+
     private Account createAccountWithBalance(long balance) {
         long sequence = ACCOUNT_SEQUENCE.incrementAndGet();
         Customer customer = customerRepository.saveAndFlush(new Customer("Transfer API Customer " + sequence));

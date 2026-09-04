@@ -15,6 +15,8 @@ docker exec -i bankcore-mysql mysql -ubankcore -pbankcore_password bankcore \
   < scripts/sql/seed-journal-pagination-benchmark.sql
 ```
 
+The seed script inserts synthetic data and runs `EXPLAIN ANALYZE` for the first-page keyset query, middle-page keyset query, and offset comparison query.
+
 Cleanup script:
 
 ```bash

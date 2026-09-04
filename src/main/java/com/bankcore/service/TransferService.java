@@ -17,8 +17,10 @@ import com.bankcore.repository.AccountJournalEntryRepository;
 import com.bankcore.repository.AccountRepository;
 import com.bankcore.repository.FinancialTransactionRepository;
 import com.bankcore.repository.IdempotencyRecordRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,30 +28,34 @@ import java.util.UUID;
 @Service
 public class TransferService {
 
+    private static final int MAX_CALLER_SCOPE_LENGTH = 100;
+    private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 120;
+
     private final AccountRepository accountRepository;
     private final FinancialTransactionRepository financialTransactionRepository;
     private final AccountJournalEntryRepository accountJournalEntryRepository;
     private final IdempotencyRecordRepository idempotencyRecordRepository;
+    private final TransactionTemplate transactionTemplate;
 
     public TransferService(
             AccountRepository accountRepository,
             FinancialTransactionRepository financialTransactionRepository,
             AccountJournalEntryRepository accountJournalEntryRepository,
-            IdempotencyRecordRepository idempotencyRecordRepository
+            IdempotencyRecordRepository idempotencyRecordRepository,
+            PlatformTransactionManager transactionManager
     ) {
         this.accountRepository = accountRepository;
         this.financialTransactionRepository = financialTransactionRepository;
         this.accountJournalEntryRepository = accountJournalEntryRepository;
         this.idempotencyRecordRepository = idempotencyRecordRepository;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
-    @Transactional
-    public InternalTransferResult transferInternal(Long sourceAccountId, Long destinationAccountId, Long amount) {
+    InternalTransferResult transferInternal(Long sourceAccountId, Long destinationAccountId, Long amount) {
         return transferInternal(sourceAccountId, destinationAccountId, amount, TransferFailurePoint.NONE);
     }
 
-    @Transactional
-    public InternalTransferResult transferInternal(
+    InternalTransferResult transferInternal(
             Long sourceAccountId,
             Long destinationAccountId,
             Long amount,
@@ -57,10 +63,11 @@ public class TransferService {
     ) {
         validateDistinctAccounts(sourceAccountId, destinationAccountId);
         long validAmount = MoneyPolicy.requireValidAmount(amount);
-        return performTransfer(sourceAccountId, destinationAccountId, validAmount, failurePoint).toResult();
+        return transactionTemplate.execute(status ->
+                performTransfer(sourceAccountId, destinationAccountId, validAmount, failurePoint).toResult()
+        );
     }
 
-    @Transactional
     public InternalTransferResult transferInternalIdempotent(
             String callerScope,
             String idempotencyKey,
@@ -78,7 +85,6 @@ public class TransferService {
         );
     }
 
-    @Transactional
     public InternalTransferResult transferInternalIdempotent(
             String callerScope,
             String idempotencyKey,
@@ -95,6 +101,32 @@ public class TransferService {
                 TransferRequestFingerprint.internalTransfer(sourceAccountId, destinationAccountId, validAmount);
 
         IdempotencyOperation operation = IdempotencyOperation.INTERNAL_TRANSFER;
+        try {
+            return transactionTemplate.execute(status -> claimAndRunOrReplay(
+                    callerScope,
+                    operation,
+                    idempotencyKey,
+                    requestFingerprint,
+                    sourceAccountId,
+                    destinationAccountId,
+                    validAmount,
+                    failurePoint
+            ));
+        } catch (DataIntegrityViolationException exception) {
+            return replayAfterConcurrentReservation(callerScope, operation, idempotencyKey, requestFingerprint);
+        }
+    }
+
+    private InternalTransferResult claimAndRunOrReplay(
+            String callerScope,
+            IdempotencyOperation operation,
+            String idempotencyKey,
+            String requestFingerprint,
+            Long sourceAccountId,
+            Long destinationAccountId,
+            long validAmount,
+            TransferFailurePoint failurePoint
+    ) {
         return idempotencyRecordRepository.findByCallerScopeAndOperationAndIdempotencyKey(
                         callerScope,
                         operation,
@@ -131,6 +163,23 @@ public class TransferService {
         record.complete(persistedTransfer.transaction());
         idempotencyRecordRepository.saveAndFlush(record);
         return persistedTransfer.toResult();
+    }
+
+    private InternalTransferResult replayAfterConcurrentReservation(
+            String callerScope,
+            IdempotencyOperation operation,
+            String idempotencyKey,
+            String requestFingerprint
+    ) {
+        return transactionTemplate.execute(status -> {
+            IdempotencyRecord record = idempotencyRecordRepository.findByCallerScopeAndOperationAndIdempotencyKey(
+                            callerScope,
+                            operation,
+                            idempotencyKey
+                    )
+                    .orElseThrow(() -> new IllegalStateException("Idempotency record disappeared after conflict."));
+            return replayOrReject(record, requestFingerprint);
+        });
     }
 
     private InternalTransferResult replayOrReject(IdempotencyRecord record, String requestFingerprint) {
@@ -219,6 +268,14 @@ public class TransferService {
     private static void validateIdempotencyText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new InvalidIdempotencyRequestException(fieldName);
+        }
+        int maxLength = switch (fieldName) {
+            case "callerScope" -> MAX_CALLER_SCOPE_LENGTH;
+            case "idempotencyKey" -> MAX_IDEMPOTENCY_KEY_LENGTH;
+            default -> throw new IllegalArgumentException("Unknown idempotency field: " + fieldName);
+        };
+        if (value.length() > maxLength) {
+            throw new InvalidIdempotencyRequestException(fieldName, maxLength);
         }
     }
 

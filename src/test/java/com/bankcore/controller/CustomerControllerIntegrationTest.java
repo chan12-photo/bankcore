@@ -44,4 +44,16 @@ class CustomerControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.message").value("Invalid request field: name"));
     }
+
+    @Test
+    void createCustomer_shouldRejectNameLongerThanDatabaseLimit() throws Exception {
+        mockMvc.perform(post("/api/v1/customers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"%s"}
+                                """.formatted("a".repeat(101))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Invalid request field: name"));
+    }
 }

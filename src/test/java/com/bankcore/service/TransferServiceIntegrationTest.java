@@ -21,7 +21,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.context.ImportTestcontainers;
 
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -186,6 +194,57 @@ class TransferServiceIntegrationTest {
     }
 
     @Test
+    void transferInternalIdempotent_shouldApplyMoneyEffectOnce_whenSameRequestArrivesConcurrently()
+            throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+        String idempotencyKey = nextIdempotencyKey();
+        long transactionCountBefore = financialTransactionRepository.count();
+        long journalCountBefore = accountJournalEntryRepository.count();
+        long idempotencyCountBefore = idempotencyRecordRepository.count();
+        int requestCount = 50;
+        CountDownLatch startSignal = new CountDownLatch(1);
+        ExecutorService executorService = Executors.newFixedThreadPool(16);
+
+        List<InternalTransferResult> results;
+        try {
+            List<Callable<InternalTransferResult>> tasks = IntStream.range(0, requestCount)
+                    .mapToObj(index -> (Callable<InternalTransferResult>) () -> {
+                        assertThat(startSignal.await(5, TimeUnit.SECONDS)).isTrue();
+                        return transferService.transferInternalIdempotent(
+                                "integration-test",
+                                idempotencyKey,
+                                sourceAccount.getId(),
+                                destinationAccount.getId(),
+                                3_000L
+                        );
+                    })
+                    .toList();
+            List<Future<InternalTransferResult>> futures = tasks.stream()
+                    .map(executorService::submit)
+                    .toList();
+
+            startSignal.countDown();
+            results = futures.stream()
+                    .map(future -> getFuture(future, 10, TimeUnit.SECONDS))
+                    .toList();
+        } finally {
+            executorService.shutdownNow();
+        }
+
+        Set<String> transactionKeys = results.stream()
+                .map(InternalTransferResult::transactionKey)
+                .collect(java.util.stream.Collectors.toSet());
+        assertThat(results).hasSize(requestCount);
+        assertThat(transactionKeys).hasSize(1);
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(7_000L);
+        assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance()).isEqualTo(5_000L);
+        assertThat(financialTransactionRepository.count()).isEqualTo(transactionCountBefore + 1);
+        assertThat(accountJournalEntryRepository.count()).isEqualTo(journalCountBefore + 2);
+        assertThat(idempotencyRecordRepository.count()).isEqualTo(idempotencyCountBefore + 1);
+    }
+
+    @Test
     void transferInternalIdempotent_shouldRejectSameKeyWithDifferentFingerprint() {
         Account sourceAccount = createAccountWithBalance(10_000L);
         Account destinationAccount = createAccountWithBalance(2_000L);
@@ -262,5 +321,13 @@ class TransferServiceIntegrationTest {
 
     private static String nextIdempotencyKey() {
         return "idem-" + ACCOUNT_SEQUENCE.incrementAndGet();
+    }
+
+    private static <T> T getFuture(Future<T> future, long timeout, TimeUnit unit) {
+        try {
+            return future.get(timeout, unit);
+        } catch (Exception exception) {
+            throw new AssertionError("Timed out or failed while waiting for concurrent transfer.", exception);
+        }
     }
 }

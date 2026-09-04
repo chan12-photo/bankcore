@@ -11,6 +11,7 @@
 - Stored account balance must not exceed `MoneyPolicy.MAX_BALANCE`.
 - MySQL CHECK constraints enforce the lower and upper account balance bounds.
 - Controlled seed funding must create journal evidence; direct balance mutation is allowed only in tests that intentionally prove reconciliation mismatch detection.
+- Application service methods must not expose non-journaled deposit or withdrawal paths.
 
 ## Transfer
 
@@ -32,6 +33,7 @@
 - The idempotency identity is scoped by caller, operation, and client-provided key.
 - The request fingerprint includes fingerprint version, operation, currency, source account, destination account, and amount.
 - Same scoped key with the same fingerprint has at most one committed money effect.
+- Concurrent same-key requests with the same fingerprint must converge to one committed transfer result.
 - Same scoped key with a different fingerprint is rejected.
 - Failed single-transaction idempotent transfers leave no committed idempotency record.
 - Completed idempotency records reference the committed response transaction.

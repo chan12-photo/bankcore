@@ -28,7 +28,7 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 
 ### Idempotency
 
-멱등성 기준은 `caller_scope + operation + idempotency_key`입니다. 같은 key와 같은 request fingerprint는 같은 결과를 재생하고, 같은 key지만 source/destination/amount가 다른 요청은 충돌로 거부합니다.
+멱등성 기준은 `caller_scope + operation + idempotency_key`입니다. 같은 key와 같은 request fingerprint는 같은 결과를 재생하고, 같은 key지만 source/destination/amount가 다른 요청은 충돌로 거부합니다. 또한 같은 key의 동일 요청이 동시에 여러 번 들어와도 unique key 경쟁에서 이긴 하나의 이체 결과만 남고, 나머지는 완료된 결과를 replay하도록 검증했습니다.
 
 ### Concurrency
 
@@ -51,13 +51,13 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 - 기능 수를 늘리기보다 금융성 백엔드에서 중요한 실패 모드와 불변식을 먼저 정의했습니다.
 - 테스트가 단순 happy path가 아니라 rollback, retry, duplicate request, stale write, lock strategy 차이를 검증합니다.
 - JPA `ddl-auto`는 `validate`로 두고, schema source of truth는 Flyway로 관리했습니다.
-- public API는 안전장치가 붙은 internal transfer만 열고, 비멱등 입금/출금 API는 의도적으로 제외했습니다.
+- public API는 안전장치가 붙은 internal transfer만 열고, 비멱등 입금/출금 API 및 journal 없는 service-layer 입출금 경로는 의도적으로 제외했습니다.
 - 이 프로젝트는 “진짜 은행 시스템”이 아니라 “은행 IT에서 중요한 정확성 문제를 작게 재현한 실험형 백엔드”라고 설명하는 것이 가장 안전합니다.
 
 ## 이력서 문장 예시
 
-Java/Spring Boot와 MySQL 기반 금융 이체 백엔드를 구현하며, 트랜잭션 롤백, 멱등성 재시도, optimistic/pessimistic locking, reconciliation mismatch 탐지를 Testcontainers 통합 테스트와 SQL evidence로 검증했습니다.
+Java/Spring Boot와 MySQL 기반 금융 이체 백엔드를 구현하며, 트랜잭션 롤백, 동시 멱등성 재시도, optimistic/pessimistic locking, reconciliation mismatch 탐지를 Testcontainers 통합 테스트와 SQL evidence로 검증했습니다.
 
 ## 30초 답변 예시
 
-BankCore는 실제 은행 코어 전체가 아니라, 금융 이체 정확성에 집중한 실험형 백엔드입니다. 이체 성공 시 transaction과 journal을 같이 남기고, 실패 시 잔액과 기록이 함께 롤백되는지 검증했습니다. 또한 idempotency key로 재시도 중복 이체를 막고, no-lock, optimistic lock, pessimistic lock을 비교해 동시성 문제가 어떻게 발생하고 어떻게 방어되는지 테스트로 증명했습니다.
+BankCore는 실제 은행 코어 전체가 아니라, 금융 이체 정확성에 집중한 실험형 백엔드입니다. 이체 성공 시 transaction과 journal을 같이 남기고, 실패 시 잔액과 기록이 함께 롤백되는지 검증했습니다. 또한 idempotency key로 재시도와 동시 중복 이체를 막고, no-lock, optimistic lock, pessimistic lock을 비교해 동시성 문제가 어떻게 발생하고 어떻게 방어되는지 테스트로 증명했습니다.
