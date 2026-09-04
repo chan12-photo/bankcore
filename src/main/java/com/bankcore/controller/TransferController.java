@@ -4,6 +4,7 @@ import com.bankcore.controller.dto.InternalTransferRequest;
 import com.bankcore.controller.dto.TransferResponse;
 import com.bankcore.service.InternalTransferResult;
 import com.bankcore.service.TransferService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,7 +26,7 @@ public class TransferController {
     public ResponseEntity<TransferResponse> transferInternal(
             @RequestHeader("X-Caller-Scope") String callerScope,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @RequestBody InternalTransferRequest request
+            @Valid @RequestBody InternalTransferRequest request
     ) {
         InternalTransferResult result = transferService.transferInternalIdempotent(
                 callerScope,

@@ -19,6 +19,7 @@ import com.bankcore.exception.SameAccountTransferException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -58,6 +59,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> handleMessageNotReadable() {
         return error(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_BODY", "Request body is missing or malformed.");
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException exception) {
+        String fieldName = exception.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(fieldError -> fieldError.getField())
+                .orElse("request");
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Invalid request field: " + fieldName);
     }
 
     @ExceptionHandler({

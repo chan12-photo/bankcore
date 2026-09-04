@@ -3,6 +3,7 @@ package com.bankcore.controller;
 import com.bankcore.controller.dto.AccountResponse;
 import com.bankcore.controller.dto.CreateAccountRequest;
 import com.bankcore.service.AccountService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +22,7 @@ public class AccountController {
     }
 
     @PostMapping
-    public ResponseEntity<AccountResponse> createAccount(@RequestBody CreateAccountRequest request) {
+    public ResponseEntity<AccountResponse> createAccount(@Valid @RequestBody CreateAccountRequest request) {
         AccountResponse response = accountService.createAccount(request.customerId(), request.accountNumber());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

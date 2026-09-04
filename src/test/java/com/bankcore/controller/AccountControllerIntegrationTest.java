@@ -66,6 +66,30 @@ class AccountControllerIntegrationTest {
     }
 
     @Test
+    void createAccount_shouldRejectMissingCustomerId() throws Exception {
+        mockMvc.perform(post("/api/v1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"accountNumber":"100-000-validation"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Invalid request field: customerId"));
+    }
+
+    @Test
+    void createAccount_shouldRejectBlankAccountNumber() throws Exception {
+        Long customerId = createCustomer();
+
+        mockMvc.perform(post("/api/v1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createAccountJson(customerId, " ")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Invalid request field: accountNumber"));
+    }
+
+    @Test
     void depositEndpoint_shouldNotBePublicApi() throws Exception {
         Account account = createAccount();
 

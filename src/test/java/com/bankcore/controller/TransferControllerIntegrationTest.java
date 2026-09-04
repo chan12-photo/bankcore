@@ -173,6 +173,38 @@ class TransferControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Request body is missing or malformed."));
     }
 
+    @Test
+    void internalTransfer_shouldRejectMissingAmountWithValidationError() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        mockMvc.perform(post("/api/v1/transfers/internal")
+                        .header("X-Caller-Scope", "controller-test")
+                        .header("Idempotency-Key", nextIdempotencyKey())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sourceAccountId":%d,"destinationAccountId":%d}
+                                """.formatted(sourceAccount.getId(), destinationAccount.getId())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Invalid request field: amount"));
+    }
+
+    @Test
+    void internalTransfer_shouldRejectNegativeAmountWithValidationError() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        mockMvc.perform(post("/api/v1/transfers/internal")
+                        .header("X-Caller-Scope", "controller-test")
+                        .header("Idempotency-Key", nextIdempotencyKey())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(sourceAccount.getId(), destinationAccount.getId(), -1L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Invalid request field: amount"));
+    }
+
     private Account createAccountWithBalance(long balance) {
         long sequence = ACCOUNT_SEQUENCE.incrementAndGet();
         Customer customer = customerRepository.saveAndFlush(new Customer("Transfer API Customer " + sequence));
