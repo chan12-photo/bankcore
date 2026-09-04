@@ -28,7 +28,7 @@ BUILD SUCCESSFUL
 Result:
 
 ```text
-Successfully validated 4 migrations
+Successfully validated 5 migrations
 Schema `bankcore` is up to date. No migration necessary.
 Started BankcoreApplication
 ```
@@ -72,6 +72,56 @@ Result on the local development database after journaled flows:
 - The optimistic locking experiment leaves no reconciliation mismatches for the involved accounts after one transfer rolls back.
 - A test-only pessimistic write lock experiment serializes concurrent transfers on the source account row.
 - The pessimistic write lock experiment makes the second transfer observe the latest balance and roll back without reconciliation mismatches.
+- Account journal keyset pagination is available at `GET /api/v1/accounts/{accountId}/journal-entries`.
+- The account journal query is backed by `idx_account_journal_account_id_id(account_id, id)`.
+
+## SQL Evidence
+
+Local Flyway history after boot:
+
+```text
+version  description                            success
+1        create customer and account tables      1
+2        add account balance upper bound         1
+3        create transaction journal tables       1
+4        create idempotency record table         1
+5        add account journal keyset index        1
+```
+
+Index verification:
+
+```text
+Key_name                              Seq_in_index  Column_name
+idx_account_journal_account_id_id      1             account_id
+idx_account_journal_account_id_id      2             id
+```
+
+Keyset query:
+
+```sql
+SELECT id, transaction_id, entry_no, movement_type, amount, balance_after, created_at
+FROM account_journal_entry
+WHERE account_id = ?
+  AND id < ?
+ORDER BY id DESC
+LIMIT ?;
+```
+
+Observed `EXPLAIN` with `USE INDEX (idx_account_journal_account_id_id)`:
+
+```text
+type   key                                  key_len  rows  Extra
+range  idx_account_journal_account_id_id     16       1     Using index condition; Backward index scan
+```
+
+Observed `EXPLAIN` for the first-page query:
+
+```text
+type  key                                  key_len  ref    rows  Extra
+ref   idx_account_journal_account_id_id     8        const  1     Backward index scan
+```
+
+On the tiny local development database, MySQL may choose the primary key for some `id < ?` variants because the cardinality is near zero. The explicit index check confirms that the intended composite index is present and usable; larger measurement data should be captured later for portfolio-grade pagination benchmarks.
 
 ## Important Boundary
 

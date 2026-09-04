@@ -42,3 +42,8 @@
 - Reconciliation detects mismatches and reports them.
 - Reconciliation does not automatically repair balances.
 - Accounts created, funded, and transferred through journaled flows should not appear in reconciliation mismatch results.
+
+## Querying
+
+- Account journal lookup should use keyset pagination rather than offset pagination.
+- Account journal lookup is ordered by descending journal entry id for stable newest-first paging.

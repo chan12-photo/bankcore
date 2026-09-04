@@ -20,6 +20,7 @@ This is not a real banking core, general ledger, compliance system, or productio
 - Public internal transfer API requiring caller scope and idempotency key
 - Controlled seed funding service for journaled test data
 - Account balance reconciliation API
+- Account journal keyset pagination API
 
 Public deposit and withdrawal APIs are intentionally not exposed. Deposit and withdrawal behavior exists as domain logic for fixtures and controlled setup only; public money movement is limited to idempotent internal transfer.
 
@@ -63,6 +64,13 @@ Find account balance reconciliation mismatches:
 
 ```bash
 curl http://localhost:8080/api/v1/reconciliation/account-balances/mismatches
+```
+
+Read recent account journal entries with keyset pagination:
+
+```bash
+curl "http://localhost:8080/api/v1/accounts/1/journal-entries?limit=20"
+curl "http://localhost:8080/api/v1/accounts/1/journal-entries?beforeEntryId=100&limit=20"
 ```
 
 ## Key Documents

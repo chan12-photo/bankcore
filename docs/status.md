@@ -33,6 +33,9 @@ Completed:
 - Test-only optimistic locking race experiment demonstrates one successful transfer, one rolled-back transfer, and no reconciliation mismatch.
 - Test-only pessimistic write lock race experiment demonstrates row-level serialization and no reconciliation mismatch.
 - Transfer API returns stable `ApiErrorResponse` bodies for missing headers and malformed request bodies.
+- Account journal keyset pagination API is implemented.
+- Flyway creates `idx_account_journal_account_id_id(account_id, id)` for account journal lookup.
+- Local SQL evidence confirms the journal pagination index is present and usable.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
 
 Current local environment:
@@ -48,7 +51,7 @@ Current local environment:
 ## Next Steps
 
 1. Add a controlled seed path for test funds without presenting deposit as a customer-facing money API.
-2. Capture SQL query plans and pagination measurements.
+2. Capture larger pagination measurements with seeded journal volume.
 3. Add portfolio-facing ADRs that explain scope reductions and tradeoffs.
 4. Add CI evidence after GitHub Actions runs on the pushed commits.
 5. Add request validation annotations if the API surface grows beyond the current small contract.
