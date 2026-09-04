@@ -36,6 +36,7 @@ Completed:
 - Account journal keyset pagination API is implemented.
 - Flyway creates `idx_account_journal_account_id_id(account_id, id)` for account journal lookup.
 - Local SQL evidence confirms the journal pagination index is present and usable.
+- ADRs document the scope reduction, idempotency requirement, and reconciliation decision.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
 
 Current local environment:
@@ -52,6 +53,6 @@ Current local environment:
 
 1. Add a controlled seed path for test funds without presenting deposit as a customer-facing money API.
 2. Capture larger pagination measurements with seeded journal volume.
-3. Add portfolio-facing ADRs that explain scope reductions and tradeoffs.
-4. Add CI evidence after GitHub Actions runs on the pushed commits.
-5. Add request validation annotations if the API surface grows beyond the current small contract.
+3. Add CI evidence after GitHub Actions runs on the pushed commits.
+4. Add request validation annotations if the API surface grows beyond the current small contract.
+5. Add larger synthetic-data SQL measurements.
