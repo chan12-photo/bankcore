@@ -12,6 +12,12 @@ BankCore는 포트폴리오 제출 가능한 백엔드 MVP와 로컬 검증용 �
 
 ```bash
 cd /Users/chan12/Desktop/Java/bankcore
+./scripts/verify-local.sh
+```
+
+개별로 나누어 실행하고 싶다면 아래 순서로 확인할 수 있습니다.
+
+```bash
 docker compose up -d
 ./gradlew test --no-daemon
 ./scripts/demo.sh
@@ -27,6 +33,7 @@ npm run build
 - Gradle test: `BUILD SUCCESSFUL`
 - Demo script: `Demo completed successfully.`
 - Frontend demo script: `Frontend demo completed successfully.`
+- Full local verification script: `Local verification completed successfully.`
 - Reconciliation response: `[]`
 - Frontend lint: 오류 없음
 - Frontend build: Vite production build 성공
@@ -61,6 +68,7 @@ npm run build
 - OpenAPI JSON과 Swagger UI를 제공하고, core API path가 문서화되는지 테스트합니다.
 - React/TypeScript Lab Console로 demo account, idempotent transfer, replay, conflict, journal, reconciliation 흐름을 한 화면에서 시연할 수 있습니다.
 - `scripts/demo-frontend.sh`로 브라우저 수동 조작 없이도 frontend `/api` proxy를 거친 핵심 흐름을 검증할 수 있습니다.
+- `scripts/verify-local.sh` 하나로 backend test, frontend lint/build, backend demo, frontend proxy demo를 한 번에 확인할 수 있습니다.
 
 ## 과장하면 안 되는 주장
 

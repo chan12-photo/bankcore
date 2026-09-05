@@ -74,6 +74,8 @@ Result on the local development database after journaled flows:
 - Repeating the same idempotency key with the same request returns the same transfer result without a duplicate money effect.
 - Concurrent same-key idempotent transfer hardening is captured separately in `docs/evidence/2026-09-05-hardening.md`.
 - Repeating the same idempotency key with a different request fingerprint is rejected.
+- The backend demo script verifies same-key changed-body requests return `IDEMPOTENCY_KEY_CONFLICT`.
+- The backend demo script verifies both source and destination journal lookups contain the captured transfer transaction.
 - Failed idempotent transfer rolls back the idempotency record together with transfer state.
 - Missing idempotency headers and malformed JSON return stable `ApiErrorResponse` bodies.
 - Bean Validation rejects missing customer id, blank account number, missing transfer amount, and negative transfer amount before service execution.

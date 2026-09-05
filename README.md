@@ -45,13 +45,21 @@ curl http://localhost:8080/api/v1/health
 
 Use the `demo` profile when you want a clean portfolio walkthrough with two pre-funded synthetic accounts.
 
+Full local verification:
+
+```bash
+./scripts/verify-local.sh
+```
+
+This runs the backend test suite, frontend install/lint/build, backend API demo, and frontend proxy demo.
+
 Fully automated demo:
 
 ```bash
 ./scripts/demo.sh
 ```
 
-The script starts Docker Compose, runs the app with the `demo` profile on port `18080`, performs a transfer, repeats it with the same idempotency key, checks journal entries, and verifies reconciliation returns no mismatches.
+The script starts Docker Compose, runs the app with the `demo` profile on port `18080`, performs a transfer, repeats it with the same idempotency key, verifies same-key changed-body `409` conflict, checks source and destination journal entries, and verifies reconciliation returns no mismatches.
 
 Frontend proxy demo:
 

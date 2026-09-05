@@ -41,6 +41,38 @@ print(alice["accountId"], bob["accountId"])
 PY
 }
 
+extract_transaction_id() {
+  python3 - "$1" <<'PY'
+import json
+import sys
+
+print(json.loads(sys.argv[1])["transactionId"])
+PY
+}
+
+assert_journal_contains_transaction() {
+  python3 - "$1" "$2" <<'PY'
+import json
+import sys
+
+entries = json.loads(sys.argv[1])
+transaction_id = int(sys.argv[2])
+if not any(entry["transactionId"] == transaction_id for entry in entries):
+    raise SystemExit(f"Journal did not include transaction {transaction_id}")
+PY
+}
+
+assert_idempotency_conflict() {
+  python3 - "$1" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+if payload.get("code") != "IDEMPOTENCY_KEY_CONFLICT":
+    raise SystemExit(f"Expected IDEMPOTENCY_KEY_CONFLICT, got {payload}")
+PY
+}
+
 require_command curl
 require_command docker
 require_command python3
@@ -103,8 +135,39 @@ if [[ "${FIRST_RESPONSE}" != "${REPLAY_RESPONSE}" ]]; then
 fi
 
 echo
+echo "Same key with changed amount should return 409:"
+CONFLICT_BODY="{\"sourceAccountId\":${SOURCE_ACCOUNT_ID},\"destinationAccountId\":${DESTINATION_ACCOUNT_ID},\"amount\":1001}"
+CONFLICT_FILE="$(mktemp)"
+CONFLICT_STATUS="$(curl -sS -o "${CONFLICT_FILE}" -w "%{http_code}" -X POST "${BASE_URL}/api/v1/transfers/internal" \
+  -H "Content-Type: application/json" \
+  -H "X-Caller-Scope: demo-script" \
+  -H "Idempotency-Key: ${IDEMPOTENCY_KEY}" \
+  -d "${CONFLICT_BODY}")"
+CONFLICT_RESPONSE="$(cat "${CONFLICT_FILE}")"
+rm -f "${CONFLICT_FILE}"
+echo "${CONFLICT_RESPONSE}"
+echo
+
+if [[ "${CONFLICT_STATUS}" != "409" ]]; then
+  echo "Expected HTTP 409 for same-key changed-body probe, got ${CONFLICT_STATUS}." >&2
+  exit 1
+fi
+assert_idempotency_conflict "${CONFLICT_RESPONSE}"
+
+TRANSACTION_ID="$(extract_transaction_id "${FIRST_RESPONSE}")"
+
+echo
 echo "Source account journal:"
-curl -fsS "${BASE_URL}/api/v1/accounts/${SOURCE_ACCOUNT_ID}/journal-entries?limit=5"
+SOURCE_JOURNAL="$(curl -fsS "${BASE_URL}/api/v1/accounts/${SOURCE_ACCOUNT_ID}/journal-entries?limit=10")"
+echo "${SOURCE_JOURNAL}"
+assert_journal_contains_transaction "${SOURCE_JOURNAL}" "${TRANSACTION_ID}"
+echo
+
+echo
+echo "Destination account journal:"
+DESTINATION_JOURNAL="$(curl -fsS "${BASE_URL}/api/v1/accounts/${DESTINATION_ACCOUNT_ID}/journal-entries?limit=10")"
+echo "${DESTINATION_JOURNAL}"
+assert_journal_contains_transaction "${DESTINATION_JOURNAL}" "${TRANSACTION_ID}"
 echo
 
 echo

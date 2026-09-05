@@ -50,8 +50,9 @@ Completed:
 - Synthetic 50,000-row journal pagination benchmark compares keyset pagination with offset pagination and the seed script includes both query shapes.
 - A `demo` Spring profile creates two journal-funded synthetic demo accounts for repeatable local walkthroughs.
 - Existing demo accounts are rebalanced back to Alice `100000` and Bob `30000` on demo startup using journaled transfer or controlled seed funding, not direct balance edits.
-- `scripts/demo.sh` runs an automated local demo for health, demo accounts, idempotent transfer replay, journal lookup, and reconciliation.
+- `scripts/demo.sh` runs an automated local demo for health, demo accounts, idempotent transfer replay, same-key changed-body conflict, source and destination journal lookup, and reconciliation.
 - `scripts/demo-frontend.sh` runs an automated local frontend proxy demo for the Vite root page, demo accounts, idempotent replay, same-key changed-body conflict, source and destination journal lookup, and reconciliation.
+- `scripts/verify-local.sh` runs the backend test suite, frontend install/lint/build, backend API demo, and frontend proxy demo in one command.
 - OpenAPI JSON and Swagger UI are available through springdoc-openapi and covered by integration tests.
 - React/TypeScript/Vite BankCore Lab Console is implemented under `frontend/`.
 - The lab console uses TanStack Query to load demo accounts, run idempotent internal transfers, replay the same request, probe same-key changed-body conflicts, show journal rows, and show reconciliation status.

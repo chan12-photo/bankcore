@@ -39,6 +39,12 @@ From the repository root:
 
 The script starts the demo backend on `18080`, starts Vite on `15173`, loads the frontend root, and verifies the transfer/replay/conflict/journal/reconciliation flow through the frontend `/api` proxy.
 
+For the full repository check, run:
+
+```bash
+./scripts/verify-local.sh
+```
+
 ## Verification Flow
 
 1. Load demo accounts from `GET /api/v1/demo/accounts`.

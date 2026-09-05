@@ -107,6 +107,21 @@ Result:
 Demo completed successfully.
 ```
 
+The backend demo script now verifies:
+
+- Same-request idempotent replay returns the identical response.
+- Same-key changed-body requests return HTTP `409` with `IDEMPOTENCY_KEY_CONFLICT`.
+- Source and destination journal lookups both contain the captured transfer transaction.
+- Reconciliation returns `[]`.
+
+Full local verification is available through:
+
+```bash
+./scripts/verify-local.sh
+```
+
+This runs the backend test suite, frontend install/lint/build, backend API demo, and frontend proxy demo.
+
 OpenAPI endpoints were verified manually on the demo server:
 
 ```text

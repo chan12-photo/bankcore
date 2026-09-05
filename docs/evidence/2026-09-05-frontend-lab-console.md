@@ -65,6 +65,14 @@ Observed result:
 
 GitHub Actions also runs the frontend dependency install, lint, production build, and frontend proxy demo after the backend test suite.
 
+The full local verification wrapper is:
+
+```bash
+./scripts/verify-local.sh
+```
+
+It runs backend tests, frontend install/lint/build, backend API demo, and frontend proxy demo.
+
 Build output observed:
 
 ```text
