@@ -8,7 +8,7 @@ Java/Spring Boot와 MySQL 기반 금융 이체 백엔드를 구현하며, 트랜
 
 - Java 25, Spring Boot 4.1, MySQL 8.4, Flyway, JPA, Testcontainers 기반 금융 이체 정확성 검증 백엔드 구현
 - 내부이체 성공 시 transaction 1건과 account journal 2건을 기록하고, 실패 주입 테스트로 flush 이후 예외에서도 잔액/거래/journal/idempotency row가 함께 롤백됨을 검증
-- `caller_scope + operation + idempotency_key` 기반 멱등성 모델을 구현해 동일 요청 재시도와 동시 같은-key 요청은 하나의 결과로 replay하고, 다른 fingerprint 재사용은 conflict로 거부
+- `caller_scope + operation + idempotency_key` 기반 멱등성 모델을 구현해 동일 요청 재시도와 동시 같은-key 요청은 하나의 결과로 replay하고, 동시 different-fingerprint 요청은 conflict로 거부
 - no-lock, optimistic lock, pessimistic lock 동시성 실험을 구성하고, 실제 internal transfer에는 account id 순서의 ordered write lock을 적용해 deadlock 위험 완화를 Testcontainers MySQL에서 검증
 - stored balance와 journal-derived balance를 비교하는 reconciliation API를 구현하고, 직접 잔액 변조 및 정상 journaled flow를 통해 mismatch 탐지 여부 검증
 - account journal 조회에 `(account_id, id)` 인덱스와 keyset pagination을 적용하고, 50,000건 synthetic journal 기준 offset pagination 대비 접근 패턴과 `EXPLAIN ANALYZE` 결과 문서화
@@ -37,7 +37,7 @@ BankCore는 Java/Spring Boot와 MySQL로 만든 금융 이체 정확성 검증 �
 
 ### 멱등성은 어떻게 보장했나요?
 
-`caller_scope + operation + idempotency_key`에 unique constraint를 걸었습니다. 요청 fingerprint에는 version, operation, currency, source account, destination account, amount를 포함했습니다. 같은 key와 같은 fingerprint는 기존 transaction/journal 결과를 replay하고, 같은 key지만 fingerprint가 다르면 conflict로 거부합니다. 동시 같은-key 요청에서는 하나만 insert와 이체에 성공하고, unique key 경쟁에서 진 요청은 새 transaction에서 완료된 idempotency record를 다시 읽어 replay합니다.
+`caller_scope + operation + idempotency_key`에 unique constraint를 걸었습니다. 요청 fingerprint에는 version, operation, currency, source account, destination account, amount를 포함했습니다. 같은 key와 같은 fingerprint는 기존 transaction/journal 결과를 replay하고, 같은 key지만 fingerprint가 다르면 conflict로 거부합니다. 동시 같은-key 요청에서는 하나만 insert와 이체에 성공하고, unique key 경쟁에서 진 요청은 새 transaction에서 완료된 idempotency record를 다시 읽어 replay 또는 conflict 판단을 합니다.
 
 ### rollback은 어떻게 검증했나요?
 

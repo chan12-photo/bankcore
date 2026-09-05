@@ -245,6 +245,68 @@ class TransferServiceIntegrationTest {
     }
 
     @Test
+    void transferInternalIdempotent_shouldRejectConcurrentSameKeyWithDifferentFingerprint()
+            throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+        String idempotencyKey = nextIdempotencyKey();
+        long transactionCountBefore = financialTransactionRepository.count();
+        long journalCountBefore = accountJournalEntryRepository.count();
+        long idempotencyCountBefore = idempotencyRecordRepository.count();
+        CountDownLatch startSignal = new CountDownLatch(1);
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+
+        List<TransferCallOutcome> outcomes;
+        try {
+            List<Callable<TransferCallOutcome>> tasks = List.of(
+                    () -> callTransferAndCaptureOutcome(
+                            startSignal,
+                            idempotencyKey,
+                            sourceAccount.getId(),
+                            destinationAccount.getId(),
+                            3_000L
+                    ),
+                    () -> callTransferAndCaptureOutcome(
+                            startSignal,
+                            idempotencyKey,
+                            sourceAccount.getId(),
+                            destinationAccount.getId(),
+                            4_000L
+                    )
+            );
+            List<Future<TransferCallOutcome>> futures = tasks.stream()
+                    .map(executorService::submit)
+                    .toList();
+
+            startSignal.countDown();
+            outcomes = futures.stream()
+                    .map(future -> getFuture(future, 10, TimeUnit.SECONDS))
+                    .toList();
+        } finally {
+            executorService.shutdownNow();
+        }
+
+        List<TransferCallOutcome> successes = outcomes.stream()
+                .filter(TransferCallOutcome::isSuccess)
+                .toList();
+        List<TransferCallOutcome> conflicts = outcomes.stream()
+                .filter(outcome -> outcome.failure() instanceof IdempotencyKeyConflictException)
+                .toList();
+
+        assertThat(successes).hasSize(1);
+        assertThat(conflicts).hasSize(1);
+        long committedAmount = successes.get(0).result().amount();
+        assertThat(committedAmount).isIn(3_000L, 4_000L);
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance())
+                .isEqualTo(10_000L - committedAmount);
+        assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance())
+                .isEqualTo(2_000L + committedAmount);
+        assertThat(financialTransactionRepository.count()).isEqualTo(transactionCountBefore + 1);
+        assertThat(accountJournalEntryRepository.count()).isEqualTo(journalCountBefore + 2);
+        assertThat(idempotencyRecordRepository.count()).isEqualTo(idempotencyCountBefore + 1);
+    }
+
+    @Test
     void transferInternalIdempotent_shouldSerializeOppositeDirectionTransfersWithOrderedLocks()
             throws Exception {
         Account firstAccount = createAccountWithBalance(10_000L);
@@ -378,11 +440,53 @@ class TransferServiceIntegrationTest {
         return "idem-" + ACCOUNT_SEQUENCE.incrementAndGet();
     }
 
+    private TransferCallOutcome callTransferAndCaptureOutcome(
+            CountDownLatch startSignal,
+            String idempotencyKey,
+            Long sourceAccountId,
+            Long destinationAccountId,
+            Long amount
+    ) {
+        try {
+            assertThat(startSignal.await(5, TimeUnit.SECONDS)).isTrue();
+            return TransferCallOutcome.success(transferService.transferInternalIdempotent(
+                    "integration-test",
+                    idempotencyKey,
+                    sourceAccountId,
+                    destinationAccountId,
+                    amount
+            ));
+        } catch (RuntimeException exception) {
+            return TransferCallOutcome.failure(exception);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("Interrupted while waiting for concurrent transfer.", exception);
+        }
+    }
+
     private static <T> T getFuture(Future<T> future, long timeout, TimeUnit unit) {
         try {
             return future.get(timeout, unit);
         } catch (Exception exception) {
             throw new AssertionError("Timed out or failed while waiting for concurrent transfer.", exception);
+        }
+    }
+
+    private record TransferCallOutcome(
+            InternalTransferResult result,
+            RuntimeException failure
+    ) {
+
+        private static TransferCallOutcome success(InternalTransferResult result) {
+            return new TransferCallOutcome(result, null);
+        }
+
+        private static TransferCallOutcome failure(RuntimeException failure) {
+            return new TransferCallOutcome(null, failure);
+        }
+
+        private boolean isSuccess() {
+            return result != null;
         }
     }
 }

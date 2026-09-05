@@ -25,6 +25,8 @@ Completed:
 - Service-layer idempotent internal transfer rejects the same key with a different request fingerprint.
 - Failed idempotent transfers roll back the idempotency record together with balances and journal rows.
 - Concurrent same-key idempotent transfer requests are covered by an integration test and produce one committed money effect.
+- Concurrent same-key different-fingerprint transfer requests are covered by an integration test and converge to one success plus one conflict.
+- Database integrity exceptions are translated only when the matched database constraint is the expected business constraint.
 - Public internal transfer API is implemented with required `X-Caller-Scope` and `Idempotency-Key` headers.
 - Public transfer API retry tests verify same-response replay and no duplicate transfer effect.
 - Idempotency header lengths are validated before database insert to match schema limits.
@@ -41,6 +43,7 @@ Completed:
 - Transfer API returns stable `ApiErrorResponse` bodies for missing headers and malformed request bodies.
 - Request DTOs use Bean Validation for required fields and positive transfer amounts.
 - Request DTO validation now also mirrors key database limits for customer names, account numbers, account ids, and transfer amounts.
+- Customer and account services also validate length limits before repository/database use.
 - Account journal keyset pagination API is implemented.
 - Flyway creates `idx_account_journal_account_id_id(account_id, id)` for account journal lookup.
 - Local SQL evidence confirms the journal pagination index is present and usable.

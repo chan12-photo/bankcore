@@ -30,6 +30,7 @@ public class TransferService {
 
     private static final int MAX_CALLER_SCOPE_LENGTH = 100;
     private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 120;
+    private static final String IDEMPOTENCY_UNIQUE_CONSTRAINT = "uk_idempotency_scope_operation_key";
 
     private final AccountRepository accountRepository;
     private final FinancialTransactionRepository financialTransactionRepository;
@@ -113,6 +114,9 @@ public class TransferService {
                     failurePoint
             ));
         } catch (DataIntegrityViolationException exception) {
+            if (!DatabaseConstraintMatcher.containsConstraintName(exception, IDEMPOTENCY_UNIQUE_CONSTRAINT)) {
+                throw exception;
+            }
             return replayAfterConcurrentReservation(callerScope, operation, idempotencyKey, requestFingerprint);
         }
     }

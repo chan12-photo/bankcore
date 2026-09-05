@@ -28,7 +28,7 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 
 ### Idempotency
 
-멱등성 기준은 `caller_scope + operation + idempotency_key`입니다. 같은 key와 같은 request fingerprint는 같은 결과를 재생하고, 같은 key지만 source/destination/amount가 다른 요청은 충돌로 거부합니다. 또한 같은 key의 동일 요청이 동시에 여러 번 들어와도 unique key 경쟁에서 이긴 하나의 이체 결과만 남고, 나머지는 완료된 결과를 replay하도록 검증했습니다.
+멱등성 기준은 `caller_scope + operation + idempotency_key`입니다. 같은 key와 같은 request fingerprint는 같은 결과를 재생하고, 같은 key지만 source/destination/amount가 다른 요청은 충돌로 거부합니다. 또한 같은 key의 동일 요청이 동시에 여러 번 들어와도 unique key 경쟁에서 이긴 하나의 이체 결과만 남고, 나머지는 완료된 결과를 replay하도록 검증했습니다. 같은 key에 서로 다른 body가 동시에 들어오는 경우도 하나의 성공과 하나의 conflict로 수렴하는지 검증했습니다.
 
 ### Concurrency
 

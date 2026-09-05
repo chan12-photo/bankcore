@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CustomerService {
 
+    private static final int MAX_CUSTOMER_NAME_LENGTH = 100;
+
     private final CustomerRepository customerRepository;
 
     public CustomerService(CustomerRepository customerRepository) {
@@ -20,6 +22,9 @@ public class CustomerService {
     public CustomerResponse createCustomer(String name) {
         if (name == null || name.isBlank()) {
             throw new InvalidCustomerNameException();
+        }
+        if (name.length() > MAX_CUSTOMER_NAME_LENGTH) {
+            throw new InvalidCustomerNameException(MAX_CUSTOMER_NAME_LENGTH);
         }
 
         Customer customer = customerRepository.saveAndFlush(new Customer(name));

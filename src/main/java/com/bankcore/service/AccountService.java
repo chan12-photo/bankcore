@@ -15,6 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AccountService {
 
+    private static final int MAX_ACCOUNT_NUMBER_LENGTH = 30;
+    private static final String ACCOUNT_NUMBER_UNIQUE_CONSTRAINT = "uk_account_account_number";
+
     private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
 
@@ -38,6 +41,9 @@ public class AccountService {
             Account account = accountRepository.saveAndFlush(new Account(customer, accountNumber));
             return toResponse(account);
         } catch (DataIntegrityViolationException exception) {
+            if (!DatabaseConstraintMatcher.containsConstraintName(exception, ACCOUNT_NUMBER_UNIQUE_CONSTRAINT)) {
+                throw exception;
+            }
             throw new DuplicateAccountNumberException(accountNumber);
         }
     }
@@ -51,6 +57,9 @@ public class AccountService {
     private static void validateAccountNumber(String accountNumber) {
         if (accountNumber == null || accountNumber.isBlank()) {
             throw new InvalidAccountNumberException();
+        }
+        if (accountNumber.length() > MAX_ACCOUNT_NUMBER_LENGTH) {
+            throw new InvalidAccountNumberException(MAX_ACCOUNT_NUMBER_LENGTH);
         }
     }
 

@@ -41,6 +41,8 @@ docker compose up -d
 - 출금 직후 또는 journal flush 이후 예외가 발생해도 잔액, 거래, journal, idempotency row가 함께 rollback됩니다.
 - 같은 idempotency key와 같은 request fingerprint는 같은 결과를 replay하고, 다른 fingerprint 재사용은 conflict로 거부합니다.
 - 동시 same-key 요청 50개가 들어와도 money effect는 한 번만 발생하는 것을 Testcontainers MySQL 통합 테스트로 검증했습니다.
+- 동시 same-key different-fingerprint 요청은 하나만 성공하고 하나는 conflict가 되는 것을 검증했습니다.
+- DB integrity 예외는 기대한 unique constraint 이름이 확인될 때만 business exception으로 변환합니다.
 - no-lock, optimistic lock, pessimistic lock 실험을 통해 동시성 실패와 방어 전략을 비교했습니다.
 - 실제 internal transfer는 두 계좌를 account id 순서로 pessimistic write lock 하여 반대 방향 이체 deadlock 위험을 줄였습니다.
 - stored balance와 journal-derived balance를 비교하는 reconciliation API로 불일치를 탐지합니다.

@@ -5,6 +5,8 @@
 This pass closes review findings that could otherwise weaken the portfolio story:
 
 - Concurrent same-key idempotency should not leak a raw database unique constraint failure or create duplicate money movement.
+- Concurrent same-key different-fingerprint requests should produce one committed transfer and one idempotency conflict.
+- Database integrity exceptions should not be broadly reclassified unless the expected constraint is actually present.
 - Non-journaled service-layer deposit and withdrawal paths should not exist outside domain/test setup.
 - Public request validation should reject values that exceed database column or check-constraint limits before persistence.
 - The local walkthrough should provide a repeatable way to run a successful transfer without exposing a public deposit API.
@@ -33,7 +35,7 @@ Result:
 
 ```text
 BUILD SUCCESSFUL
-tests=59 failures=0 errors=0 skipped=0
+tests=64 failures=0 errors=0 skipped=0
 ```
 
 Docker was running locally for Testcontainers:
@@ -129,6 +131,17 @@ The integration test `transferInternalIdempotent_shouldApplyMoneyEffectOnce_when
 - Only two journal rows are created.
 - Only one idempotency record is created.
 
+The integration test `transferInternalIdempotent_shouldRejectConcurrentSameKeyWithDifferentFingerprint` starts two same-key requests with different transfer amounts at the same time and verifies:
+
+- Exactly one request succeeds.
+- Exactly one request fails with `IDEMPOTENCY_KEY_CONFLICT`.
+- Final balances reflect only the committed request amount.
+- Only one financial transaction is created.
+- Only two journal rows are created.
+- Only one idempotency record is created.
+
+`DataIntegrityViolationException` recovery is now constrained by database constraint name. The transfer service only replays after a unique-key race when the cause chain contains `uk_idempotency_scope_operation_key`; otherwise the original integrity exception is rethrown.
+
 ### Non-Journaled Money Movement
 
 `AccountService` no longer exposes `deposit` or `withdraw` service methods. Public money movement remains limited to the idempotent internal transfer API, while controlled seed funding stays journaled through `ControlledFundingService`.
@@ -144,6 +157,11 @@ Bean Validation now mirrors database limits for public request DTOs:
 - Account number: nonblank, max 30.
 - Transfer account ids: required, positive.
 - Transfer amount: required, positive, max `1_000_000_000_000`.
+
+Customer and account services also reject values that exceed database text limits before repository/database use:
+
+- Customer name: max 100.
+- Account number: max 30.
 
 Idempotency headers are validated before persistence:
 
