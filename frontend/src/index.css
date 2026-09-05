@@ -1,0 +1,87 @@
+:root {
+  --amber: #be8539;
+  --bg: #f5efe2;
+  --border: rgba(32, 43, 40, 0.12);
+  --border-strong: rgba(32, 43, 40, 0.22);
+  --card: rgba(255, 252, 244, 0.82);
+  --danger: #b0372d;
+  --green: #1e785a;
+  --green-dark: #145241;
+  --ink: #17201d;
+  --muted: #7d725f;
+  --panel: rgba(255, 249, 236, 0.74);
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-sm: 12px;
+  --radius-xl: 32px;
+  --shadow-soft: 0 24px 80px rgba(47, 39, 24, 0.12);
+  --soft: rgba(255, 255, 255, 0.54);
+  --text-muted: #5f635d;
+
+  --sans: 'Avenir Next', 'Aptos', 'Trebuchet MS', sans-serif;
+  --heading: 'Georgia', 'Times New Roman', serif;
+  --mono: 'SFMono-Regular', 'Cascadia Code', Consolas, monospace;
+
+  color: var(--ink);
+  background:
+    linear-gradient(120deg, rgba(30, 120, 90, 0.1), transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(190, 133, 57, 0.24), transparent 34%),
+    linear-gradient(180deg, #fbf5e9 0%, var(--bg) 58%, #ece1cf 100%);
+  font: 16px/1.55 var(--sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: '';
+  background-image:
+    linear-gradient(rgba(23, 32, 29, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 32, 29, 0.045) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.92), transparent 82%);
+}
+
+h1 {
+  max-width: 920px;
+  margin: 0 0 14px;
+  color: var(--ink);
+  font-family: var(--heading);
+  font-size: clamp(44px, 8vw, 92px);
+  font-weight: 800;
+  letter-spacing: -0.07em;
+  line-height: 0.88;
+}
+
+h2 {
+  color: var(--ink);
+  font-family: var(--heading);
+  font-size: 28px;
+  line-height: 1;
+}
+
+p {
+  margin: 0;
+}
+
+code {
+  display: inline-flex;
+  padding: 5px 8px;
+  border: 1px solid rgba(23, 32, 29, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--green-dark);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 800;
+}

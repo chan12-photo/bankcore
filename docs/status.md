@@ -51,6 +51,10 @@ Completed:
 - A `demo` Spring profile creates two journal-funded synthetic demo accounts for repeatable local walkthroughs.
 - `scripts/demo.sh` runs an automated local demo for health, demo accounts, idempotent transfer replay, journal lookup, and reconciliation.
 - OpenAPI JSON and Swagger UI are available through springdoc-openapi and covered by integration tests.
+- React/TypeScript/Vite BankCore Lab Console is implemented under `frontend/`.
+- The lab console uses TanStack Query to load demo accounts, run idempotent internal transfers, replay the same request, probe same-key changed-body conflicts, show journal rows, and show reconciliation status.
+- Vite dev proxy forwards local `/api` calls to the Spring Boot backend on `http://localhost:8080`.
+- Frontend lint and production build are covered locally and in GitHub Actions CI.
 - ADRs document the scope reduction, idempotency requirement, and reconciliation decision.
 - GitHub Actions CI is green on the latest pushed `main` commits.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
@@ -64,6 +68,8 @@ Current local environment:
 - Java: Temurin 25.0.4.1
 - Gradle Wrapper: 9.7.1
 - Spring Boot: 4.1.1
+- Node.js: 25.8.1
+- npm: 11.11.0
 - Docker: 29.7.2
 - MySQL container: 8.4.11
 - MySQL isolation level observed locally: `REPEATABLE-READ`
@@ -73,5 +79,6 @@ Current local environment:
 
 1. Add bounded retry for selected optimistic-lock conflicts only if the project scope expands toward production-style operations.
 2. Add production-style authentication and authorization only if the project scope expands beyond portfolio evidence.
-3. Choose the final resume bullet wording based on the target role.
-4. Keep production banking, authentication, authorization, compliance, and external payment integrations explicitly out of scope unless the project direction changes.
+3. Capture a short screen recording or screenshots of the Lab Console flow if the portfolio submission platform supports media.
+4. Choose the final resume bullet wording based on the target role.
+5. Keep production banking, authentication, authorization, compliance, and external payment integrations explicitly out of scope unless the project direction changes.
