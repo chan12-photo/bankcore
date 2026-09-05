@@ -47,6 +47,7 @@ npm run build
 - `docs/evidence/2026-09-05-frontend-lab-console.md`: 프론트엔드 Lab Console 검증 근거
 - `docs/evidence/2026-09-04-core-behavior.md`: 핵심 동작 검증 근거
 - `docs/evidence/2026-09-04-journal-pagination-benchmark.md`: keyset pagination SQL 근거
+- `docs/evidence/2026-09-06-local-and-ci-verification.md`: 최신 로컬 검증과 GitHub Actions 성공 근거
 - `docs/portfolio-writeup-ko.md`: 포트폴리오 설명문
 - `docs/resume-and-interview-notes-ko.md`: 이력서/면접 답변용 요약
 - `docs/adr/`: 설계 결정 기록

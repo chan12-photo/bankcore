@@ -2,7 +2,7 @@
 
 ## Current Checkpoint
 
-Status date: 2026-09-05
+Status date: 2026-09-06
 
 Completed:
 
@@ -53,6 +53,7 @@ Completed:
 - `scripts/demo.sh` runs an automated local demo for health, demo accounts, idempotent transfer replay, same-key changed-body conflict, source and destination journal lookup, and reconciliation.
 - `scripts/demo-frontend.sh` runs an automated local frontend proxy demo for the Vite root page, demo accounts, idempotent replay, same-key changed-body conflict, source and destination journal lookup, and reconciliation.
 - `scripts/verify-local.sh` runs the backend test suite, frontend install/lint/build, backend API demo, and frontend proxy demo in one command.
+- Demo scripts wait for MySQL container health before starting the backend and print recent logs on readiness failure.
 - OpenAPI JSON and Swagger UI are available through springdoc-openapi and covered by integration tests.
 - React/TypeScript/Vite BankCore Lab Console is implemented under `frontend/`.
 - The lab console uses TanStack Query to load demo accounts, run idempotent internal transfers, replay the same request, probe same-key changed-body conflicts, show journal rows, and show reconciliation status.
@@ -63,6 +64,7 @@ Completed:
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
 - Hardening evidence is captured in `docs/evidence/2026-09-05-hardening.md`.
 - Frontend lab console evidence is captured in `docs/evidence/2026-09-05-frontend-lab-console.md`.
+- Final local and CI verification evidence is captured in `docs/evidence/2026-09-06-local-and-ci-verification.md`.
 - Korean submission checklist is captured in `docs/submission-checklist-ko.md`.
 - Korean portfolio write-up is captured in `docs/portfolio-writeup-ko.md`.
 - Korean resume and interview notes are captured in `docs/resume-and-interview-notes-ko.md`.
@@ -86,3 +88,9 @@ Current local environment:
 3. Capture a short screen recording or screenshots of the Lab Console flow if the portfolio submission platform supports media.
 4. Choose the final resume bullet wording based on the target role.
 5. Keep production banking, authentication, authorization, compliance, and external payment integrations explicitly out of scope unless the project direction changes.
+
+Recent verified CI:
+
+- Commit: `3fbd2a3c00a4b70c634497959cd1873643820eac`
+- Run: `https://github.com/chan12-photo/bankcore/actions/runs/33975461017`
+- Result: success

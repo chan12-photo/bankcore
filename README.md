@@ -239,6 +239,7 @@ http://localhost:8080/v3/api-docs
 - [docs/evidence/2026-09-04-journal-pagination-benchmark.md](docs/evidence/2026-09-04-journal-pagination-benchmark.md)
 - [docs/evidence/2026-09-05-hardening.md](docs/evidence/2026-09-05-hardening.md)
 - [docs/evidence/2026-09-05-frontend-lab-console.md](docs/evidence/2026-09-05-frontend-lab-console.md)
+- [docs/evidence/2026-09-06-local-and-ci-verification.md](docs/evidence/2026-09-06-local-and-ci-verification.md)
 - [docs/submission-checklist-ko.md](docs/submission-checklist-ko.md)
 - [docs/portfolio-writeup-ko.md](docs/portfolio-writeup-ko.md)
 - [docs/resume-and-interview-notes-ko.md](docs/resume-and-interview-notes-ko.md)
