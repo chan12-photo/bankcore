@@ -118,7 +118,11 @@ Create a synthetic customer and zero-balance account:
 curl -X POST http://localhost:8080/api/v1/customers \
   -H "Content-Type: application/json" \
   -d '{"name":"Chanil Park"}'
+```
 
+Use the returned customer `id` when creating an account. The example below assumes the returned id was `1`:
+
+```bash
 curl -X POST http://localhost:8080/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{"customerId":1,"accountNumber":"100-000-000001"}'
@@ -174,6 +178,7 @@ http://localhost:8080/v3/api-docs
 - [docs/evidence/2026-09-04-core-behavior.md](docs/evidence/2026-09-04-core-behavior.md)
 - [docs/evidence/2026-09-04-journal-pagination-benchmark.md](docs/evidence/2026-09-04-journal-pagination-benchmark.md)
 - [docs/evidence/2026-09-05-hardening.md](docs/evidence/2026-09-05-hardening.md)
+- [docs/submission-checklist-ko.md](docs/submission-checklist-ko.md)
 - [docs/portfolio-writeup-ko.md](docs/portfolio-writeup-ko.md)
 - [docs/resume-and-interview-notes-ko.md](docs/resume-and-interview-notes-ko.md)
 - [docs/adr/0001-scope-as-transfer-correctness-backend.md](docs/adr/0001-scope-as-transfer-correctness-backend.md)

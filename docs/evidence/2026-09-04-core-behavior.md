@@ -134,7 +134,7 @@ type  key                                  key_len  ref    rows  Extra
 ref   idx_account_journal_account_id_id     8        const  1     Backward index scan
 ```
 
-On the tiny local development database, MySQL may choose the primary key for some `id < ?` variants because the cardinality is near zero. The explicit index check confirms that the intended composite index is present and usable; larger measurement data should be captured later for portfolio-grade pagination benchmarks.
+On the tiny local development database, MySQL may choose the primary key for some `id < ?` variants because the cardinality is near zero. The explicit index check confirms that the intended composite index is present and usable; larger 50,000-row measurement data is captured in `docs/evidence/2026-09-04-journal-pagination-benchmark.md`.
 
 ## Important Boundary
 

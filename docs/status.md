@@ -52,6 +52,7 @@ Completed:
 - GitHub Actions CI is green on the latest pushed `main` commits.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
 - Hardening evidence is captured in `docs/evidence/2026-09-05-hardening.md`.
+- Korean submission checklist is captured in `docs/submission-checklist-ko.md`.
 - Korean portfolio write-up is captured in `docs/portfolio-writeup-ko.md`.
 - Korean resume and interview notes are captured in `docs/resume-and-interview-notes-ko.md`.
 
@@ -69,5 +70,5 @@ Current local environment:
 
 1. Add bounded retry for selected optimistic-lock conflicts only if the project scope expands toward production-style operations.
 2. Add production-style authentication and authorization only if the project scope expands beyond portfolio evidence.
-3. Add optional OpenAPI documentation if this becomes a submitted API project.
-4. Choose the final resume bullet wording based on the target role.
+3. Choose the final resume bullet wording based on the target role.
+4. Keep production banking, authentication, authorization, compliance, and external payment integrations explicitly out of scope unless the project direction changes.
