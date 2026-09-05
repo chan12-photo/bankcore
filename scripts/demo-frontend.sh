@@ -35,6 +35,21 @@ wait_for_url() {
   return 1
 }
 
+wait_for_mysql() {
+  for _ in {1..90}; do
+    local health_status
+    health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' bankcore-mysql 2>/dev/null || true)"
+    if [[ "${health_status}" == "healthy" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "MySQL container did not become healthy." >&2
+  docker compose ps >&2 || true
+  return 1
+}
+
 extract_demo_account_ids() {
   python3 - "$1" <<'PY'
 import json
@@ -87,6 +102,7 @@ require_command python3
 
 echo "Starting MySQL with Docker Compose..."
 docker compose up -d
+wait_for_mysql
 
 echo "Starting BankCore demo backend on ${BACKEND_URL}..."
 SPRING_PROFILES_ACTIVE=demo ./gradlew bootRun --args="--server.port=${BACKEND_PORT}" --no-daemon >"${BACKEND_LOG_FILE}" 2>&1 &
@@ -105,7 +121,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-wait_for_url "${BACKEND_URL}/api/v1/health" "BankCore backend"
+if ! wait_for_url "${BACKEND_URL}/api/v1/health" "BankCore backend"; then
+  tail -n 120 "${BACKEND_LOG_FILE}" >&2 || true
+  exit 1
+fi
 
 echo "Ensuring frontend dependencies are installed..."
 if [[ ! -d frontend/node_modules ]]; then
@@ -119,7 +138,10 @@ echo "Starting Vite frontend on ${FRONTEND_URL}..."
 ) >"${FRONTEND_LOG_FILE}" 2>&1 &
 FRONTEND_PID=$!
 
-wait_for_url "${FRONTEND_URL}" "Vite frontend"
+if ! wait_for_url "${FRONTEND_URL}" "Vite frontend"; then
+  tail -n 120 "${FRONTEND_LOG_FILE}" >&2 || true
+  exit 1
+fi
 
 echo
 echo "Frontend root:"

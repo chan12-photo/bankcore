@@ -25,6 +25,22 @@ wait_for_health() {
     sleep 1
   done
   echo "BankCore demo server did not become healthy. See ${LOG_FILE}" >&2
+  tail -n 120 "${LOG_FILE}" >&2 || true
+  return 1
+}
+
+wait_for_mysql() {
+  for _ in {1..90}; do
+    local health_status
+    health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' bankcore-mysql 2>/dev/null || true)"
+    if [[ "${health_status}" == "healthy" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "MySQL container did not become healthy." >&2
+  docker compose ps >&2 || true
   return 1
 }
 
@@ -79,6 +95,7 @@ require_command python3
 
 echo "Starting MySQL with Docker Compose..."
 docker compose up -d
+wait_for_mysql
 
 echo "Starting BankCore demo server on ${BASE_URL}..."
 SPRING_PROFILES_ACTIVE=demo ./gradlew bootRun --args="--server.port=${PORT}" --no-daemon >"${LOG_FILE}" 2>&1 &
