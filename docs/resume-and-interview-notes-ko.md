@@ -2,7 +2,7 @@
 
 ## 이력서 한 줄
 
-Java/Spring Boot와 MySQL 기반 금융 이체 백엔드를 구현하며, 트랜잭션 롤백, 동시 멱등성 재시도, 동시성 제어, 정산 검증, keyset pagination 성능 근거를 통합 테스트와 SQL evidence로 검증했습니다.
+Java/Spring Boot와 MySQL 기반 금융 이체 백엔드를 구현하며, 트랜잭션 롤백, 동시 멱등성 재시도, 동시성 제어, 정산 검증, keyset pagination 성능 근거를 통합 테스트, SQL evidence, React Lab Console로 검증했습니다.
 
 ## 이력서 Bullet 후보
 
@@ -12,22 +12,26 @@ Java/Spring Boot와 MySQL 기반 금융 이체 백엔드를 구현하며, 트랜
 - no-lock, optimistic lock, pessimistic lock 동시성 실험을 구성하고, 실제 internal transfer에는 account id 순서의 ordered write lock을 적용해 deadlock 위험 완화를 Testcontainers MySQL에서 검증
 - stored balance와 journal-derived balance를 비교하는 reconciliation API를 구현하고, 직접 잔액 변조 및 정상 journaled flow를 통해 mismatch 탐지 여부 검증
 - account journal 조회에 `(account_id, id)` 인덱스와 keyset pagination을 적용하고, 50,000건 synthetic journal 기준 offset pagination 대비 접근 패턴과 `EXPLAIN ANALYZE` 결과 문서화
+- React/TypeScript/Vite/TanStack Query 기반 Lab Console을 구현해 demo account, idempotent transfer replay, conflict probe, journal, reconciliation 흐름을 한 화면에서 시연
+- `scripts/demo-frontend.sh`와 GitHub Actions CI를 구성해 backend test, frontend lint/build, frontend `/api` proxy 기반 demo flow를 자동 검증
 
 ## 가장 추천하는 이력서 Bullet 3개
 
 - Java/Spring Boot와 MySQL 기반 금융 이체 정확성 검증 백엔드를 구현하고, rollback, idempotency, reconciliation, concurrency failure를 Testcontainers 통합 테스트로 증명
 - `Idempotency-Key` 기반 내부이체 API를 설계해 동일 요청 재시도와 동시 중복 요청은 같은 결과를 replay하고, 다른 request fingerprint 재사용은 conflict로 거부하도록 구현
-- no-lock/optimistic lock/pessimistic lock 실험을 통해 stale balance overwrite와 row-level serialization 차이를 재현하고 SQL evidence로 정리
+- React Lab Console과 자동 demo script를 추가해 transfer, replay, conflict, journal, reconciliation 증거 흐름을 로컬과 CI에서 반복 가능하게 검증
 
 ## 면접 30초 답변
 
-BankCore는 실제 은행 코어 전체가 아니라 금융 이체 정확성에 집중한 실험형 백엔드입니다. Spring Boot와 MySQL로 내부이체 API를 만들고, 이체 성공 시 transaction과 journal을 함께 기록하도록 했습니다. 중간 예외가 발생해도 잔액과 기록이 함께 롤백되는지 검증했고, `Idempotency-Key`로 재시도 및 동시 중복 이체를 막았습니다. 또 no-lock, optimistic lock, pessimistic lock 실험을 만들어 동시성 문제가 어떻게 생기고 어떤 전략으로 막히는지 Testcontainers MySQL에서 증명했습니다.
+BankCore는 실제 은행 코어 전체가 아니라 금융 이체 정확성에 집중한 실험형 프로젝트입니다. Spring Boot와 MySQL로 내부이체 API를 만들고, 이체 성공 시 transaction과 journal을 함께 기록하도록 했습니다. 중간 예외가 발생해도 잔액과 기록이 함께 롤백되는지 검증했고, `Idempotency-Key`로 재시도 및 동시 중복 이체를 막았습니다. 또 React Lab Console과 자동 demo script를 추가해 transfer, replay, conflict, journal, reconciliation 흐름을 한 화면과 CI에서 재현 가능하게 만들었습니다.
 
 ## 면접 1분 답변
 
 BankCore는 Java/Spring Boot와 MySQL로 만든 금융 이체 정확성 검증 프로젝트입니다. 처음에는 은행 코어뱅킹처럼 넓게 잡을 수 있었지만, 포트폴리오에서 방어 가능한 깊이를 만들기 위해 범위를 이체 정확성으로 줄였습니다. 공개 입금/출금 API는 중복 요청 위험이 커서 제외했고, public money movement는 멱등성 헤더가 필수인 internal transfer로 제한했습니다.
 
-핵심 검증은 네 가지입니다. 첫째, 이체 성공 시 transaction 1건과 journal 2건이 남습니다. 둘째, 출금 직후 또는 journal flush 이후 예외가 발생해도 모든 변경이 롤백됩니다. 셋째, 같은 idempotency key와 같은 요청은 재시도와 동시 호출 모두에서 같은 결과를 replay하고, 같은 key로 다른 요청을 보내면 conflict를 반환합니다. 넷째, no-lock, optimistic lock, pessimistic lock 실험으로 동시성 실패와 방어 전략을 비교했습니다. 추가로 stored balance와 journal-derived balance를 비교하는 reconciliation API와 journal keyset pagination 성능 evidence도 남겼습니다.
+핵심 검증은 다섯 가지입니다. 첫째, 이체 성공 시 transaction 1건과 journal 2건이 남습니다. 둘째, 출금 직후 또는 journal flush 이후 예외가 발생해도 모든 변경이 롤백됩니다. 셋째, 같은 idempotency key와 같은 요청은 재시도와 동시 호출 모두에서 같은 결과를 replay하고, 같은 key로 다른 요청을 보내면 conflict를 반환합니다. 넷째, no-lock, optimistic lock, pessimistic lock 실험으로 동시성 실패와 방어 전략을 비교했습니다. 다섯째, React Lab Console과 `scripts/demo-frontend.sh`로 demo account, transfer, replay, conflict, journal, reconciliation 흐름을 리뷰어가 쉽게 재현할 수 있게 했습니다.
+
+추가로 stored balance와 journal-derived balance를 비교하는 reconciliation API와 journal keyset pagination 성능 evidence도 남겼습니다.
 
 ## 예상 질문과 답변
 
@@ -50,6 +54,10 @@ optimistic lock 실험은 두 트랜잭션이 같은 version을 읽은 뒤 동�
 ### reconciliation은 왜 넣었나요?
 
 잔액 row만 보면 문제가 숨어 있을 수 있습니다. 그래서 journal entry를 기준으로 계산한 잔액과 account table의 stored balance를 비교하는 reconciliation API를 만들었습니다. 정상 journaled flow는 mismatch가 없고, 직접 balance만 바꾸는 테스트는 mismatch로 탐지됩니다.
+
+### 프론트엔드는 왜 만들었나요?
+
+고객용 인터넷뱅킹을 만들려는 목적은 아니었습니다. 리뷰어가 curl을 복사하지 않아도 핵심 backend invariant를 눈으로 따라갈 수 있도록 검증 콘솔을 만들었습니다. Lab Console은 demo account 조회, 내부이체, 같은 요청 replay, 같은 key 다른 amount conflict, journal row, reconciliation 상태를 한 화면에 보여줍니다. 또한 `scripts/demo-frontend.sh`가 Vite `/api` proxy까지 거쳐 같은 흐름을 자동 검증합니다.
 
 ### 이 프로젝트가 실제 은행 시스템인가요?
 

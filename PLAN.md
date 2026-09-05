@@ -8,6 +8,8 @@ The current implementation baseline is:
 
 - Keep Java 25, Spring Boot 4.1.1, MySQL 8.4, Flyway, JPA, Testcontainers.
 - Keep the focus on transaction boundaries, concurrency failures, idempotency, reconciliation, and SQL evidence.
+- Keep the React/TypeScript Lab Console as a reviewer-facing verification console, not a customer banking product.
+- Keep `scripts/demo.sh` and `scripts/demo-frontend.sh` as repeatable local evidence paths.
 - Treat this file as the repository implementation baseline.
 - Treat older external planning documents as background material, not implementation authority.
 
@@ -31,6 +33,7 @@ The MVP must prove:
 - Stored account balance and journal-derived balance can be reconciled.
 - Controlled seed funding exists for test data without creating a public deposit API.
 - SQL pagination and index changes are measured with raw results.
+- A local Lab Console can visually replay the backend evidence flow without changing the backend scope.
 
 ## Idempotency Path
 
