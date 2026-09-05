@@ -47,3 +47,6 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+      - name: Run frontend proxy demo
+        run: ./scripts/demo-frontend.sh

@@ -49,16 +49,19 @@ Completed:
 - Local SQL evidence confirms the journal pagination index is present and usable.
 - Synthetic 50,000-row journal pagination benchmark compares keyset pagination with offset pagination and the seed script includes both query shapes.
 - A `demo` Spring profile creates two journal-funded synthetic demo accounts for repeatable local walkthroughs.
+- Existing demo accounts are rebalanced back to Alice `100000` and Bob `30000` on demo startup using journaled transfer or controlled seed funding, not direct balance edits.
 - `scripts/demo.sh` runs an automated local demo for health, demo accounts, idempotent transfer replay, journal lookup, and reconciliation.
+- `scripts/demo-frontend.sh` runs an automated local frontend proxy demo for the Vite root page, demo accounts, idempotent replay, same-key changed-body conflict, source and destination journal lookup, and reconciliation.
 - OpenAPI JSON and Swagger UI are available through springdoc-openapi and covered by integration tests.
 - React/TypeScript/Vite BankCore Lab Console is implemented under `frontend/`.
 - The lab console uses TanStack Query to load demo accounts, run idempotent internal transfers, replay the same request, probe same-key changed-body conflicts, show journal rows, and show reconciliation status.
 - Vite dev proxy forwards local `/api` calls to the Spring Boot backend on `http://localhost:8080`.
-- Frontend lint and production build are covered locally and in GitHub Actions CI.
+- Frontend lint, production build, and the frontend proxy demo are covered locally and in GitHub Actions CI.
 - ADRs document the scope reduction, idempotency requirement, and reconciliation decision.
 - GitHub Actions CI is green on the latest pushed `main` commits.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
 - Hardening evidence is captured in `docs/evidence/2026-09-05-hardening.md`.
+- Frontend lab console evidence is captured in `docs/evidence/2026-09-05-frontend-lab-console.md`.
 - Korean submission checklist is captured in `docs/submission-checklist-ko.md`.
 - Korean portfolio write-up is captured in `docs/portfolio-writeup-ko.md`.
 - Korean resume and interview notes are captured in `docs/resume-and-interview-notes-ko.md`.

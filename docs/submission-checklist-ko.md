@@ -15,6 +15,7 @@ cd /Users/chan12/Desktop/Java/bankcore
 docker compose up -d
 ./gradlew test --no-daemon
 ./scripts/demo.sh
+./scripts/demo-frontend.sh
 cd frontend
 npm install
 npm run lint
@@ -25,6 +26,7 @@ npm run build
 
 - Gradle test: `BUILD SUCCESSFUL`
 - Demo script: `Demo completed successfully.`
+- Frontend demo script: `Frontend demo completed successfully.`
 - Reconciliation response: `[]`
 - Frontend lint: 오류 없음
 - Frontend build: Vite production build 성공
@@ -50,6 +52,7 @@ npm run build
 - 같은 idempotency key와 같은 request fingerprint는 같은 결과를 replay하고, 다른 fingerprint 재사용은 conflict로 거부합니다.
 - 동시 same-key 요청 50개가 들어와도 money effect는 한 번만 발생하는 것을 Testcontainers MySQL 통합 테스트로 검증했습니다.
 - 동시 same-key different-fingerprint 요청은 하나만 성공하고 하나는 conflict가 되는 것을 검증했습니다.
+- demo profile은 반복 실행 시 Alice/Bob 계좌를 journaled 방식으로 기준 잔액에 재정렬하므로 walkthrough 시작값이 예측 가능합니다.
 - DB integrity 예외는 기대한 unique constraint 이름이 확인될 때만 business exception으로 변환합니다.
 - no-lock, optimistic lock, pessimistic lock 실험을 통해 동시성 실패와 방어 전략을 비교했습니다.
 - 실제 internal transfer는 두 계좌를 account id 순서로 pessimistic write lock 하여 반대 방향 이체 deadlock 위험을 줄였습니다.
@@ -57,6 +60,7 @@ npm run build
 - account journal 조회는 `(account_id, id)` 인덱스와 keyset pagination으로 구현했고, 50,000건 synthetic benchmark evidence를 남겼습니다.
 - OpenAPI JSON과 Swagger UI를 제공하고, core API path가 문서화되는지 테스트합니다.
 - React/TypeScript Lab Console로 demo account, idempotent transfer, replay, conflict, journal, reconciliation 흐름을 한 화면에서 시연할 수 있습니다.
+- `scripts/demo-frontend.sh`로 브라우저 수동 조작 없이도 frontend `/api` proxy를 거친 핵심 흐름을 검증할 수 있습니다.
 
 ## 과장하면 안 되는 주장
 

@@ -29,6 +29,16 @@ http://localhost:5173
 
 The default Vite dev proxy forwards `/api` to `http://localhost:8080`, so browser CORS setup is not required for local development.
 
+## Automated Proxy Demo
+
+From the repository root:
+
+```bash
+./scripts/demo-frontend.sh
+```
+
+The script starts the demo backend on `18080`, starts Vite on `15173`, loads the frontend root, and verifies the transfer/replay/conflict/journal/reconciliation flow through the frontend `/api` proxy.
+
 ## Verification Flow
 
 1. Load demo accounts from `GET /api/v1/demo/accounts`.

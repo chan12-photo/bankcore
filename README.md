@@ -53,6 +53,16 @@ Fully automated demo:
 
 The script starts Docker Compose, runs the app with the `demo` profile on port `18080`, performs a transfer, repeats it with the same idempotency key, checks journal entries, and verifies reconciliation returns no mismatches.
 
+Frontend proxy demo:
+
+```bash
+./scripts/demo-frontend.sh
+```
+
+This script starts the demo backend on port `18080`, starts the Vite frontend on port `15173`, verifies the frontend root page, calls backend APIs through the frontend `/api` proxy, checks idempotent replay, checks the intentional same-key changed-body `409` conflict, verifies both source and destination journal rows, and confirms reconciliation returns no mismatches.
+
+The `demo` profile keeps Alice and Bob suitable for repeated walkthroughs. If existing demo accounts drift after earlier demo transfers, startup rebalances them back to Alice `100000` and Bob `30000` using journaled internal transfer or controlled seed funding rather than unsafe direct balance edits.
+
 Manual demo:
 
 ```bash
@@ -137,6 +147,12 @@ http://localhost:5173
 ```
 
 The console uses Vite's local `/api` proxy to call `http://localhost:8080` by default. It demonstrates demo account loading, internal transfer, same-request idempotent replay, same-key changed-body conflict, journal rows, and reconciliation status on one screen.
+
+You can also verify the frontend server and API proxy without manual browser clicks:
+
+```bash
+./scripts/demo-frontend.sh
+```
 
 Frontend checks:
 
