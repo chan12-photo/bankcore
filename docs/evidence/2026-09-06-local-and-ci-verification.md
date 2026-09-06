@@ -17,11 +17,11 @@ The checkpoint proves that the project is not only implemented, but also repeata
 
 ## Verified Code Checkpoint
 
-- Commit: `e9993a3f39ad9e19f0e1c766b7baf600a06d4e6c`
-- Short commit: `e9993a3`
+- Commit: `ee0fed2fa1d73a3198d997600ca610e18bd1dd56`
+- Short commit: `ee0fed2`
 - Branch: `main`
 - CI workflow: `CI`
-- CI run: `https://github.com/chan12-photo/bankcore/actions/runs/34016732296`
+- CI run: `https://github.com/chan12-photo/bankcore/actions/runs/34030279899`
 - CI result: success
 
 The successful CI job completed these steps:
@@ -32,6 +32,8 @@ The successful CI job completed these steps:
 - `npm run test`
 - `npm run build`
 - `./scripts/demo-frontend.sh`
+
+This checkpoint also includes the transfer concurrency hardening pass: production internal transfer acquires lower-id-first account write locks with sequential single-account `PESSIMISTIC_WRITE` lookups, and the optimistic/pessimistic concurrency experiments now accept only their expected rollback causes.
 
 ## Local Verification Command
 
