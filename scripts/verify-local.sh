@@ -9,7 +9,7 @@ echo "Running backend test suite..."
 ./gradlew clean test --no-daemon --no-build-cache
 
 echo
-echo "Running frontend install, lint, and build..."
+echo "Running frontend install, lint, test, and build..."
 (
   cd frontend
   npm ci

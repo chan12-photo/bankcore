@@ -35,7 +35,7 @@ Result:
 
 ```text
 BUILD SUCCESSFUL
-tests=64 failures=0 errors=0 skipped=0
+tests=78 failures=0 errors=0 skipped=0
 ```
 
 Docker was running locally for Testcontainers:
