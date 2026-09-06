@@ -19,7 +19,7 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 - 내부이체 API는 `X-Caller-Scope`와 `Idempotency-Key`를 필수로 요구합니다.
 - 이체 성공 시 `financial_transaction` 1건과 `account_journal_entry` 2건을 기록합니다.
 - 실패 시 잔액, 거래, journal, idempotency 기록이 함께 롤백되어야 합니다.
-- reconciliation API는 저장된 계좌 잔액과 journal 기반 계산 잔액을 비교합니다.
+- reconciliation API는 저장된 계좌 잔액과 journal 기반 계산 잔액을 비교하고, 거래별 journal 구조가 기대한 불변조건을 만족하는지도 별도로 검사합니다.
 - 계좌 journal 조회는 offset pagination 대신 keyset pagination으로 구현했습니다.
 - demo profile은 반복 실행 시 Alice/Bob 계좌를 기준 잔액으로 journaled 방식 재정렬합니다.
 - React Lab Console은 Vite proxy와 TanStack Query를 사용해 backend evidence flow를 시각적으로 실행합니다.
@@ -32,7 +32,7 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 
 ### Idempotency
 
-멱등성 기준은 `caller_scope + operation + idempotency_key`입니다. 같은 key와 같은 request fingerprint는 같은 결과를 재생하고, 같은 key지만 source/destination/amount가 다른 요청은 충돌로 거부합니다. 또한 같은 key의 동일 요청이 동시에 여러 번 들어와도 unique key 경쟁에서 이긴 하나의 이체 결과만 남고, 나머지는 완료된 결과를 replay하도록 검증했습니다. 같은 key에 서로 다른 body가 동시에 들어오는 경우도 하나의 성공과 하나의 conflict로 수렴하는지 검증했습니다.
+멱등성 기준은 `caller_scope + operation + idempotency_key`입니다. 다만 원문 idempotency key는 DB에 저장하지 않고, scope와 operation을 포함한 SHA-256 digest를 unique key로 사용합니다. 같은 key와 같은 request fingerprint는 같은 결과를 재생하고, 같은 key지만 source/destination/amount가 다른 요청은 충돌로 거부합니다. 또한 같은 key의 동일 요청이 동시에 여러 번 들어와도 unique key 경쟁에서 이긴 하나의 이체 결과만 남고, 나머지는 완료된 결과를 replay하도록 검증했습니다. 같은 key에 서로 다른 body가 동시에 들어오는 경우도 하나의 성공과 하나의 conflict로 수렴하는지 검증했습니다.
 
 ### Concurrency
 
@@ -44,7 +44,7 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 
 ### Reconciliation
 
-정상적인 controlled seed funding과 internal transfer는 journal을 남기므로 reconciliation mismatch가 발생하지 않습니다. 반대로 테스트에서 계좌 balance만 직접 변경하면 reconciliation API가 mismatch를 탐지합니다.
+정상적인 controlled seed funding과 internal transfer는 journal을 남기므로 reconciliation mismatch가 발생하지 않습니다. 계좌 balance만 직접 변경하면 account balance reconciliation이 mismatch를 탐지하고, 이체 transaction의 journal이 한 건뿐이거나 방향/계좌/금액 구조가 틀리면 transaction journal reconciliation이 mismatch code를 반환합니다.
 
 ### SQL
 
@@ -52,9 +52,9 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 
 ### Lab Console
 
-React/TypeScript/Vite 기반 Lab Console을 추가해 `GET /api/v1/demo/accounts`, `POST /api/v1/transfers/internal`, journal 조회, reconciliation 조회를 한 화면에서 실행하도록 만들었습니다. 같은 idempotency key로 동일 요청을 replay하면 첫 응답과 같은 transaction 결과를 보여주고, 같은 key로 amount만 바꾸면 의도된 409 conflict를 성공적인 검증 결과로 표시합니다.
+React/TypeScript/Vite 기반 Lab Console을 추가해 `GET /api/v1/demo/accounts`, `POST /api/v1/transfers/internal`, journal 조회, account reconciliation 조회, transaction journal reconciliation 조회를 한 화면에서 실행하도록 만들었습니다. 같은 idempotency key로 동일 요청을 replay하면 첫 응답과 같은 transaction 결과를 보여주고, 같은 key로 amount만 바꾸면 의도된 409 conflict를 성공적인 검증 결과로 표시합니다.
 
-`scripts/demo-frontend.sh`는 demo backend와 Vite dev server를 함께 띄운 뒤 frontend `/api` proxy를 통해 이체, replay, conflict, source/destination journal, reconciliation까지 자동 검증합니다. GitHub Actions CI도 백엔드 테스트, 프론트 lint/build, frontend proxy demo를 함께 실행합니다.
+`scripts/demo-frontend.sh`는 demo backend와 Vite dev server를 함께 띄운 뒤 frontend `/api` proxy를 통해 이체, replay, conflict, source/destination journal, account reconciliation, transaction journal reconciliation까지 자동 검증합니다. GitHub Actions CI도 백엔드 테스트, 프론트 lint/build, frontend proxy demo를 함께 실행합니다.
 
 ## 면접에서 강조할 포인트
 

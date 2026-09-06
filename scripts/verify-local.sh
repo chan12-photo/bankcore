@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
 echo "Running backend test suite..."
-./gradlew test --no-daemon
+./gradlew clean test --no-daemon --no-build-cache
 
 echo
 echo "Running frontend install, lint, and build..."
@@ -14,6 +14,7 @@ echo "Running frontend install, lint, and build..."
   cd frontend
   npm ci
   npm run lint
+  npm run test
   npm run build
 )
 

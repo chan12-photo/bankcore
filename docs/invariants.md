@@ -32,6 +32,9 @@
 ## Idempotency
 
 - The idempotency identity is scoped by caller, operation, and client-provided key.
+- Raw idempotency keys are validated at the API/service boundary but are not stored in the database.
+- The database stores a domain-separated SHA-256 digest for the scoped idempotency key.
+- Idempotency key comparison is case-sensitive because the unique identity is enforced on the binary digest.
 - The request fingerprint includes fingerprint version, operation, currency, source account, destination account, and amount.
 - Same scoped key with the same fingerprint has at most one committed money effect.
 - Concurrent same-key requests with the same fingerprint must converge to one committed transfer result.
@@ -42,6 +45,12 @@
 ## Reconciliation
 
 - Account balance should equal total journal increases minus total journal decreases.
+- Controlled seed transactions should have exactly one increasing journal entry with entry number 1.
+- Internal transfer transactions should have exactly two journal entries.
+- Internal transfer journal entries should have entry numbers 1 and 2.
+- Internal transfer entry 1 should decrease the source account and entry 2 should increase the destination account.
+- Internal transfer journal entries should involve two distinct accounts.
+- Internal transfer journal amounts should match the financial transaction amount and net to zero.
 - Reconciliation detects mismatches and reports them.
 - Reconciliation does not automatically repair balances.
 - Accounts created, funded, and transferred through journaled flows should not appear in reconciliation mismatch results.

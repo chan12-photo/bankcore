@@ -2,7 +2,7 @@
 
 React, TypeScript, Vite, and TanStack Query UI for demonstrating the BankCore backend evidence flow.
 
-This is not a customer-facing banking app. It is a local verification console for the portfolio reviewer: demo accounts, internal transfer, idempotent replay, intentional conflict probing, journal rows, and reconciliation status are shown together.
+This is not a customer-facing banking app. It is a local verification console for the portfolio reviewer: demo accounts, internal transfer, idempotent replay, intentional conflict probing, journal rows, account balance reconciliation, and transaction journal reconciliation are shown together.
 
 ## Run Locally
 
@@ -37,7 +37,7 @@ From the repository root:
 ./scripts/demo-frontend.sh
 ```
 
-The script starts the demo backend on `18080`, starts Vite on `15173`, loads the frontend root, and verifies the transfer/replay/conflict/journal/reconciliation flow through the frontend `/api` proxy.
+The script starts the demo backend on `18080`, starts Vite on `15173`, loads the frontend root, and verifies the transfer/replay/conflict/journal/account-reconciliation/transaction-reconciliation flow through the frontend `/api` proxy.
 
 For the full repository check, run:
 
@@ -52,7 +52,8 @@ For the full repository check, run:
 3. Replay the exact same request and confirm the response matches the first response.
 4. Reuse the same key with a changed amount and confirm the expected HTTP 409 conflict.
 5. Read both transfer-side journal rows.
-6. Confirm reconciliation returns no balance mismatches.
+6. Confirm account balance reconciliation returns no mismatches.
+7. Confirm transaction journal reconciliation returns no mismatches.
 
 ## Environment
 
@@ -73,5 +74,8 @@ Keep `VITE_BANKCORE_API_BASE_URL` blank during local development to use the Vite
 
 ```bash
 npm run lint
+npm run test
 npm run build
 ```
+
+`npm run test` uses Vitest with a jsdom DOM environment to verify the Lab Console transfer, replay, conflict, journal proof, and reconciliation evidence flow with mocked backend responses.

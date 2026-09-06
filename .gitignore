@@ -1,6 +1,12 @@
 HELP.md
 .gradle
 build/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+__MACOSX/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
@@ -41,3 +47,4 @@ frontend/node_modules/
 frontend/dist/
 frontend/.env.local
 frontend/.env.*.local
+!frontend/.env.example

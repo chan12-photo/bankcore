@@ -11,8 +11,14 @@ BankCore는 포트폴리오 제출 가능한 백엔드 MVP와 로컬 검증용 �
 아래 명령이 성공하면 로컬 실행과 테스트 기준은 충족됩니다.
 
 ```bash
-cd /Users/chan12/Desktop/Java/bankcore
+cd bankcore
 ./scripts/verify-local.sh
+```
+
+ZIP 제출물이 꼭 필요하면 Finder로 상위 폴더를 압축하지 말고 아래 명령으로 깨끗한 archive를 생성합니다.
+
+```bash
+./scripts/create-submission-archive.sh
 ```
 
 개별로 나누어 실행하고 싶다면 아래 순서로 확인할 수 있습니다.
@@ -31,11 +37,14 @@ npm run build
 기대 결과:
 
 - Gradle test: `BUILD SUCCESSFUL`
+- Frontend test: Vitest 테스트 성공
 - Demo script: `Demo completed successfully.`
 - Frontend demo script: `Frontend demo completed successfully.`
 - Full local verification script: `Local verification completed successfully.`
+- Submission archive script: `build/BankCore-portfolio-<commit>.zip` 생성
 - Reconciliation response: `[]`
 - Frontend lint: 오류 없음
+- Frontend test: React Lab Console DOM 테스트 성공
 - Frontend build: Vite production build 성공
 
 ## 리뷰어에게 먼저 보여줄 파일
@@ -51,6 +60,13 @@ npm run build
 - `docs/portfolio-writeup-ko.md`: 포트폴리오 설명문
 - `docs/resume-and-interview-notes-ko.md`: 이력서/면접 답변용 요약
 - `docs/adr/`: 설계 결정 기록
+
+## ZIP 제출 주의
+
+- `Java(3).zip`처럼 상위 작업 폴더 전체를 압축한 파일은 제출하지 않습니다.
+- 제출 ZIP에는 `.git`, `.gradle`, `.idea`, `build/`, `frontend/node_modules/`, `frontend/dist/`, `__MACOSX`, `.DS_Store`, 과거 프롬프트/리뷰 문서가 들어가면 안 됩니다.
+- 가장 안전한 제출 방식은 GitHub 저장소 링크입니다.
+- ZIP이 필요하면 `./scripts/create-submission-archive.sh`로 만든 archive만 사용합니다.
 
 ## 면접에서 안전하게 말할 수 있는 주장
 

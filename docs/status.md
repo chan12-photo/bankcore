@@ -26,16 +26,22 @@ Completed:
 - Failed idempotent transfers roll back the idempotency record together with balances and journal rows.
 - Concurrent same-key idempotent transfer requests are covered by an integration test and produce one committed money effect.
 - Concurrent same-key different-fingerprint transfer requests are covered by an integration test and converge to one success plus one conflict.
+- Idempotent transfer claim/run and concurrent-conflict replay paths use explicit `REQUIRES_NEW` transaction boundaries.
+- An ambient `@Transactional` caller integration test verifies same-key concurrent replay still produces one committed money effect.
 - Database integrity exceptions are translated only when the matched database constraint is the expected business constraint.
 - Public internal transfer API is implemented with required `X-Caller-Scope` and `Idempotency-Key` headers.
 - Public transfer API retry tests verify same-response replay and no duplicate transfer effect.
 - Idempotency header lengths are validated before database insert to match schema limits.
+- Raw idempotency keys are transformed into scoped SHA-256 digests before persistence, so the database unique key no longer stores the original key text.
+- Idempotency key uniqueness is enforced on a binary digest, making raw key semantics case-sensitive.
 - Controlled seed funding service records test funds as transaction and journal rows without exposing a public deposit API.
 - Account service no longer exposes non-journaled deposit or withdrawal service methods.
 - Internal transfer loads both transfer accounts with pessimistic write locks in deterministic account-id order.
 - Opposite-direction concurrent transfers are covered by an ordered-lock integration test to reduce deadlock risk.
 - Account balance reconciliation service compares stored balances against journal-derived balances.
 - Reconciliation API reports mismatched accounts for evidence and diagnostics.
+- Transaction journal reconciliation service detects malformed transaction journal structures, including missing entries, wrong movement directions, same-account transfer pairs, and amount mismatches.
+- Reconciliation API reports transaction journal mismatches separately from account balance mismatches.
 - Test-only unsafe no-lock race experiment demonstrates stale-balance overwrite and reconciliation mismatch.
 - Test-only optimistic locking race experiment demonstrates one successful transfer, one rolled-back transfer, and no reconciliation mismatch.
 - Optimistic locking failures are mapped to a stable `409 CONFLICT` API response instead of leaking as a generic server error.
@@ -50,15 +56,17 @@ Completed:
 - Synthetic 50,000-row journal pagination benchmark compares keyset pagination with offset pagination and the seed script includes both query shapes.
 - A `demo` Spring profile creates two journal-funded synthetic demo accounts for repeatable local walkthroughs.
 - Existing demo accounts are rebalanced back to Alice `100000` and Bob `30000` on demo startup using journaled transfer or controlled seed funding, not direct balance edits.
-- `scripts/demo.sh` runs an automated local demo for health, demo accounts, idempotent transfer replay, same-key changed-body conflict, source and destination journal lookup, and reconciliation.
-- `scripts/demo-frontend.sh` runs an automated local frontend proxy demo for the Vite root page, demo accounts, idempotent replay, same-key changed-body conflict, source and destination journal lookup, and reconciliation.
-- `scripts/verify-local.sh` runs the backend test suite, frontend install/lint/build, backend API demo, and frontend proxy demo in one command.
+- `scripts/demo.sh` runs an automated local demo for health, demo accounts, idempotent transfer replay, same-key changed-body conflict, source and destination journal lookup, account reconciliation, and transaction journal reconciliation.
+- `scripts/demo-frontend.sh` runs an automated local frontend proxy demo for the Vite root page, demo accounts, idempotent replay, same-key changed-body conflict, source and destination journal lookup, account reconciliation, and transaction journal reconciliation.
+- `scripts/verify-local.sh` runs a clean backend test suite, frontend install/lint/test/build, backend API demo, and frontend proxy demo in one command.
 - Demo scripts wait for MySQL container health before starting the backend and print recent logs on readiness failure.
 - OpenAPI JSON and Swagger UI are available through springdoc-openapi and covered by integration tests.
 - React/TypeScript/Vite BankCore Lab Console is implemented under `frontend/`.
 - The lab console uses TanStack Query to load demo accounts, run idempotent internal transfers, replay the same request, probe same-key changed-body conflicts, show journal rows, and show reconciliation status.
+- The lab console checks both account balance mismatches and transaction journal mismatches.
 - Vite dev proxy forwards local `/api` calls to the Spring Boot backend on `http://localhost:8080`.
 - Frontend lint, production build, and the frontend proxy demo are covered locally and in GitHub Actions CI.
+- Frontend jsdom behavior testing is covered with Vitest and React Testing Library.
 - ADRs document the scope reduction, idempotency requirement, and reconciliation decision.
 - GitHub Actions CI is green on the latest pushed `main` commits.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.

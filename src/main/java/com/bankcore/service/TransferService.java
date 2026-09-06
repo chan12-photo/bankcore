@@ -3,6 +3,7 @@ package com.bankcore.service;
 import com.bankcore.domain.Account;
 import com.bankcore.domain.AccountJournalEntry;
 import com.bankcore.domain.FinancialTransaction;
+import com.bankcore.domain.IdempotencyKeyDigest;
 import com.bankcore.domain.IdempotencyOperation;
 import com.bankcore.domain.IdempotencyRecord;
 import com.bankcore.domain.IdempotencyStatus;
@@ -20,6 +21,7 @@ import com.bankcore.repository.IdempotencyRecordRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
@@ -30,13 +32,14 @@ public class TransferService {
 
     private static final int MAX_CALLER_SCOPE_LENGTH = 100;
     private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 120;
-    private static final String IDEMPOTENCY_UNIQUE_CONSTRAINT = "uk_idempotency_scope_operation_key";
+    private static final String IDEMPOTENCY_UNIQUE_CONSTRAINT = "uk_idempotency_scope_operation_key_digest";
 
     private final AccountRepository accountRepository;
     private final FinancialTransactionRepository financialTransactionRepository;
     private final AccountJournalEntryRepository accountJournalEntryRepository;
     private final IdempotencyRecordRepository idempotencyRecordRepository;
     private final TransactionTemplate transactionTemplate;
+    private final TransactionTemplate idempotentTransferTransactionTemplate;
 
     public TransferService(
             AccountRepository accountRepository,
@@ -50,6 +53,8 @@ public class TransferService {
         this.accountJournalEntryRepository = accountJournalEntryRepository;
         this.idempotencyRecordRepository = idempotencyRecordRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.idempotentTransferTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.idempotentTransferTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     InternalTransferResult transferInternal(Long sourceAccountId, Long destinationAccountId, Long amount) {
@@ -102,11 +107,12 @@ public class TransferService {
                 TransferRequestFingerprint.internalTransfer(sourceAccountId, destinationAccountId, validAmount);
 
         IdempotencyOperation operation = IdempotencyOperation.INTERNAL_TRANSFER;
+        byte[] idempotencyKeyDigest = IdempotencyKeyDigest.of(callerScope, operation, idempotencyKey);
         try {
-            return transactionTemplate.execute(status -> claimAndRunOrReplay(
+            return idempotentTransferTransactionTemplate.execute(status -> claimAndRunOrReplay(
                     callerScope,
                     operation,
-                    idempotencyKey,
+                    idempotencyKeyDigest,
                     requestFingerprint,
                     sourceAccountId,
                     destinationAccountId,
@@ -117,30 +123,30 @@ public class TransferService {
             if (!DatabaseConstraintMatcher.containsConstraintName(exception, IDEMPOTENCY_UNIQUE_CONSTRAINT)) {
                 throw exception;
             }
-            return replayAfterConcurrentReservation(callerScope, operation, idempotencyKey, requestFingerprint);
+            return replayAfterConcurrentReservation(callerScope, operation, idempotencyKeyDigest, requestFingerprint);
         }
     }
 
     private InternalTransferResult claimAndRunOrReplay(
             String callerScope,
             IdempotencyOperation operation,
-            String idempotencyKey,
+            byte[] idempotencyKeyDigest,
             String requestFingerprint,
             Long sourceAccountId,
             Long destinationAccountId,
             long validAmount,
             TransferFailurePoint failurePoint
     ) {
-        return idempotencyRecordRepository.findByCallerScopeAndOperationAndIdempotencyKey(
+        return idempotencyRecordRepository.findByCallerScopeAndOperationAndIdempotencyKeyDigest(
                         callerScope,
                         operation,
-                        idempotencyKey
+                        idempotencyKeyDigest
                 )
                 .map(record -> replayOrReject(record, requestFingerprint))
                 .orElseGet(() -> createIdempotentTransfer(
                         callerScope,
                         operation,
-                        idempotencyKey,
+                        idempotencyKeyDigest,
                         requestFingerprint,
                         sourceAccountId,
                         destinationAccountId,
@@ -152,7 +158,7 @@ public class TransferService {
     private InternalTransferResult createIdempotentTransfer(
             String callerScope,
             IdempotencyOperation operation,
-            String idempotencyKey,
+            byte[] idempotencyKeyDigest,
             String requestFingerprint,
             Long sourceAccountId,
             Long destinationAccountId,
@@ -160,7 +166,7 @@ public class TransferService {
             TransferFailurePoint failurePoint
     ) {
         IdempotencyRecord record = idempotencyRecordRepository.saveAndFlush(
-                new IdempotencyRecord(callerScope, operation, idempotencyKey, requestFingerprint)
+                new IdempotencyRecord(callerScope, operation, idempotencyKeyDigest, requestFingerprint)
         );
         PersistedTransfer persistedTransfer =
                 performTransfer(sourceAccountId, destinationAccountId, validAmount, failurePoint);
@@ -172,14 +178,14 @@ public class TransferService {
     private InternalTransferResult replayAfterConcurrentReservation(
             String callerScope,
             IdempotencyOperation operation,
-            String idempotencyKey,
+            byte[] idempotencyKeyDigest,
             String requestFingerprint
     ) {
-        return transactionTemplate.execute(status -> {
-            IdempotencyRecord record = idempotencyRecordRepository.findByCallerScopeAndOperationAndIdempotencyKey(
+        return idempotentTransferTransactionTemplate.execute(status -> {
+            IdempotencyRecord record = idempotencyRecordRepository.findByCallerScopeAndOperationAndIdempotencyKeyDigest(
                             callerScope,
                             operation,
-                            idempotencyKey
+                            idempotencyKeyDigest
                     )
                     .orElseThrow(() -> new IllegalStateException("Idempotency record disappeared after conflict."));
             return replayOrReject(record, requestFingerprint);
@@ -239,12 +245,10 @@ public class TransferService {
     private InternalTransferResult toResult(FinancialTransaction transaction) {
         List<AccountJournalEntry> entries =
                 accountJournalEntryRepository.findByTransactionIdOrderByEntryNo(transaction.getId());
-        if (entries.size() != 2) {
-            throw new IllegalStateException("Transfer journal is not replayable: " + transaction.getId());
-        }
-
-        AccountJournalEntry sourceEntry = entries.get(0);
-        AccountJournalEntry destinationEntry = entries.get(1);
+        TransactionJournalInvariant.InternalTransferJournalPair journalPair =
+                TransactionJournalInvariant.requireReplayableInternalTransfer(transaction, entries);
+        AccountJournalEntry sourceEntry = journalPair.sourceEntry();
+        AccountJournalEntry destinationEntry = journalPair.destinationEntry();
         return new InternalTransferResult(
                 transaction.getId(),
                 transaction.getTransactionKey(),

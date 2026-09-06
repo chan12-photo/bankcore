@@ -39,7 +39,7 @@ The MVP must prove:
 
 The first implementation target is a single-transaction MVP:
 
-1. Insert or claim an idempotency record scoped by caller, operation, and key.
+1. Insert or claim an idempotency record scoped by caller, operation, and the key digest.
 2. Lock or version-check accounts according to the selected strategy.
 3. Validate business invariants.
 4. Update balances.
@@ -48,7 +48,7 @@ The first implementation target is a single-transaction MVP:
 
 The previous two-transaction PROCESSING model remains a later comparison experiment. It is useful, but it introduces progress and recovery questions that should not block the first interview-ready MVP.
 
-The current implementation also recovers from a concurrent unique-key race by replaying the winning idempotency record in a fresh transaction. This keeps the single-transaction MVP while avoiding duplicate transfer effects and avoiding a raw database constraint error response for same-key retries.
+The current implementation also recovers from a concurrent unique-key race by replaying the winning idempotency record in a fresh `REQUIRES_NEW` transaction. This keeps the single-transaction MVP while avoiding duplicate transfer effects, avoiding a raw database constraint error response for same-key retries, and preventing a future ambient `@Transactional` caller from breaking the replay boundary.
 
 ## Non-Goals
 

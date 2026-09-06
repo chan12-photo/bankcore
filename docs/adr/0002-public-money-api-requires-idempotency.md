@@ -27,9 +27,15 @@ The public money-moving API is internal transfer only, and it requires:
 
 The first implementation uses a single database transaction for idempotency record creation, balance updates, transaction rows, journal rows, and idempotency completion.
 
+That idempotent transfer transaction is an independent command boundary. The service executes both the first claim/run path and the concurrent-conflict replay path with a `REQUIRES_NEW` transaction template, so a future ambient `@Transactional` caller cannot accidentally make the replay query participate in a rollback-only outer transaction.
+
+The logical idempotency identity is still caller scope, operation, and client-provided key, but the raw key is not stored. BankCore stores a domain-separated SHA-256 digest and enforces the database unique constraint on `(caller_scope, operation, idempotency_key_digest)`.
+
 ## Consequences
 
 - Retrying the same request can replay the same response without a duplicate money effect.
 - Reusing the same idempotency key with a different request is rejected.
 - Failed transfers do not leave stuck idempotency rows in the MVP model.
+- The idempotent transfer command is not composable into a larger caller transaction without an explicit redesign.
+- Database unique-key errors do not expose the raw idempotency key value because the unique value is a digest.
 - The later two-transaction `PROCESSING` model remains a useful advanced comparison, but it is not required for the first interview-ready baseline.

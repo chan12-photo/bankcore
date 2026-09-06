@@ -1,9 +1,15 @@
 package com.bankcore.controller;
 
 import com.bankcore.domain.Account;
+import com.bankcore.domain.AccountJournalEntry;
 import com.bankcore.domain.Customer;
+import com.bankcore.domain.FinancialTransaction;
+import com.bankcore.domain.JournalMovementType;
+import com.bankcore.domain.TransactionType;
 import com.bankcore.repository.AccountRepository;
+import com.bankcore.repository.AccountJournalEntryRepository;
 import com.bankcore.repository.CustomerRepository;
+import com.bankcore.repository.FinancialTransactionRepository;
 import com.bankcore.support.MySqlContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +40,12 @@ class ReconciliationControllerIntegrationTest {
     @Autowired
     private AccountRepository accountRepository;
 
+    @Autowired
+    private FinancialTransactionRepository financialTransactionRepository;
+
+    @Autowired
+    private AccountJournalEntryRepository accountJournalEntryRepository;
+
     @Test
     void findAccountBalanceMismatches_shouldReturnMismatchRows() throws Exception {
         Account account = createZeroBalanceAccount();
@@ -43,6 +55,31 @@ class ReconciliationControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/reconciliation/account-balances/mismatches"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.accountId == %d && @.difference == 7000)]", account.getId()).exists());
+    }
+
+    @Test
+    void findTransactionJournalMismatches_shouldReturnMismatchRows() throws Exception {
+        Account account = createZeroBalanceAccount();
+        FinancialTransaction transaction = financialTransactionRepository.saveAndFlush(
+                new FinancialTransaction("recon-api-tx-" + ACCOUNT_SEQUENCE.incrementAndGet(),
+                        TransactionType.INTERNAL_TRANSFER,
+                        1_000L)
+        );
+        accountJournalEntryRepository.saveAndFlush(new AccountJournalEntry(
+                transaction,
+                1,
+                account,
+                JournalMovementType.BALANCE_DECREASE,
+                1_000L,
+                0L
+        ));
+
+        mockMvc.perform(get("/api/v1/reconciliation/transaction-journals/mismatches"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.transactionId == %d && @.journalEntryCount == 1)]",
+                        transaction.getId()).exists())
+                .andExpect(jsonPath("$[?(@.transactionId == %d && @.issueCodes[0] == 'JOURNAL_ENTRY_COUNT')]",
+                        transaction.getId()).exists());
     }
 
     private Account createZeroBalanceAccount() {

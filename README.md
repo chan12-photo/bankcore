@@ -23,6 +23,7 @@ This is not a real banking core, general ledger, compliance system, or productio
 - Deterministic ordered account write locks for internal transfer
 - Controlled seed funding service for journaled test data
 - Account balance reconciliation API
+- Transaction journal reconciliation API
 - Account journal keyset pagination API
 
 Public deposit and withdrawal APIs are intentionally not exposed. Deposit and withdrawal behavior exists as domain logic for fixtures and controlled setup only; public money movement is limited to idempotent internal transfer.
@@ -51,7 +52,15 @@ Full local verification:
 ./scripts/verify-local.sh
 ```
 
-This runs the backend test suite, frontend install/lint/build, backend API demo, and frontend proxy demo.
+This runs the backend test suite, frontend install/lint/test/build, backend API demo, and frontend proxy demo.
+
+Create a clean submission archive from the current Git commit:
+
+```bash
+./scripts/create-submission-archive.sh
+```
+
+Use this instead of compressing the parent folder in Finder. The archive is built from tracked Git files only, so it excludes `.git`, `build/`, `frontend/node_modules/`, local logs, and macOS metadata.
 
 Fully automated demo:
 
@@ -59,7 +68,7 @@ Fully automated demo:
 ./scripts/demo.sh
 ```
 
-The script starts Docker Compose, runs the app with the `demo` profile on port `18080`, performs a transfer, repeats it with the same idempotency key, verifies same-key changed-body `409` conflict, checks source and destination journal entries, and verifies reconciliation returns no mismatches.
+The script starts Docker Compose, runs the app with the `demo` profile on port `18080`, performs a transfer, repeats it with the same idempotency key, verifies same-key changed-body `409` conflict, checks source and destination journal entries, and verifies account balance plus transaction journal reconciliation return no mismatches.
 
 Frontend proxy demo:
 
@@ -67,7 +76,7 @@ Frontend proxy demo:
 ./scripts/demo-frontend.sh
 ```
 
-This script starts the demo backend on port `18080`, starts the Vite frontend on port `15173`, verifies the frontend root page, calls backend APIs through the frontend `/api` proxy, checks idempotent replay, checks the intentional same-key changed-body `409` conflict, verifies both source and destination journal rows, and confirms reconciliation returns no mismatches.
+This script starts the demo backend on port `18080`, starts the Vite frontend on port `15173`, verifies the frontend root page, calls backend APIs through the frontend `/api` proxy, checks idempotent replay, checks the intentional same-key changed-body `409` conflict, verifies both source and destination journal rows, and confirms account balance plus transaction journal reconciliation return no mismatches.
 
 The `demo` profile keeps Alice and Bob suitable for repeated walkthroughs. If existing demo accounts drift after earlier demo transfers, startup rebalances them back to Alice `100000` and Bob `30000` using journaled internal transfer or controlled seed funding rather than unsafe direct balance edits.
 
@@ -154,7 +163,7 @@ Open:
 http://localhost:5173
 ```
 
-The console uses Vite's local `/api` proxy to call `http://localhost:8080` by default. It demonstrates demo account loading, internal transfer, same-request idempotent replay, same-key changed-body conflict, journal rows, and reconciliation status on one screen.
+The console uses Vite's local `/api` proxy to call `http://localhost:8080` by default. It demonstrates demo account loading, internal transfer, same-request idempotent replay, same-key changed-body conflict, journal rows, account balance reconciliation, and transaction journal reconciliation on one screen.
 
 You can also verify the frontend server and API proxy without manual browser clicks:
 
@@ -167,6 +176,7 @@ Frontend checks:
 ```bash
 cd frontend
 npm run lint
+npm run test
 npm run build
 ```
 
@@ -206,6 +216,12 @@ Find account balance reconciliation mismatches:
 
 ```bash
 curl http://localhost:8080/api/v1/reconciliation/account-balances/mismatches
+```
+
+Find transaction journal reconciliation mismatches:
+
+```bash
+curl http://localhost:8080/api/v1/reconciliation/transaction-journals/mismatches
 ```
 
 Read recent account journal entries with keyset pagination:

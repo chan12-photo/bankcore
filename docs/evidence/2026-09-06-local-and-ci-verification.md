@@ -10,8 +10,8 @@ The checkpoint proves that the project is not only implemented, but also repeata
 
 - Backend tests pass against Testcontainers MySQL.
 - Frontend dependencies install from the lockfile.
-- Frontend lint and production build pass.
-- Backend API demo proves idempotent transfer, replay, conflict handling, journal lookup, and reconciliation.
+- Frontend lint, jsdom behavior tests, and production build pass.
+- Backend API demo proves idempotent transfer, replay, conflict handling, journal lookup, account reconciliation, and transaction journal reconciliation.
 - Frontend proxy demo proves the same backend evidence flow through the Vite `/api` proxy.
 - GitHub Actions runs the same backend, frontend, and frontend proxy demo checks on `main`.
 
@@ -29,6 +29,7 @@ The successful CI job completed these steps:
 - `./gradlew test --no-daemon`
 - `npm ci`
 - `npm run lint`
+- `npm run test`
 - `npm run build`
 - `./scripts/demo-frontend.sh`
 
@@ -37,15 +38,15 @@ The successful CI job completed these steps:
 The preferred local reviewer command is:
 
 ```bash
-cd /Users/chan12/Desktop/Java/bankcore
+cd bankcore
 ./scripts/verify-local.sh
 ```
 
 This wrapper runs:
 
 ```bash
-./gradlew test --no-daemon
-cd frontend && npm ci && npm run lint && npm run build
+./gradlew clean test --no-daemon --no-build-cache
+cd frontend && npm ci && npm run lint && npm run test && npm run build
 ./scripts/demo.sh
 ./scripts/demo-frontend.sh
 ```
@@ -55,6 +56,7 @@ Observed result:
 - Backend tests completed successfully.
 - Frontend clean install completed successfully.
 - Frontend lint completed successfully.
+- Frontend jsdom behavior test completed successfully.
 - Frontend production build completed successfully.
 - Backend demo completed successfully.
 - Frontend proxy demo completed successfully.
@@ -80,5 +82,6 @@ The automated evidence path verifies the core portfolio claims:
 - Replaying the same idempotency key and same request returns the same result.
 - Reusing the same idempotency key with a changed amount returns `409` and `IDEMPOTENCY_KEY_CONFLICT`.
 - Source and destination account journals both contain the captured transfer transaction.
-- Reconciliation returns `[]`, meaning stored balances match journal-derived balances.
+- Account balance reconciliation returns `[]`, meaning stored balances match journal-derived balances.
+- Transaction journal reconciliation returns `[]`, meaning normal seed and transfer transaction journal structures match the expected invariants.
 - The React/Vite Lab Console can reach those backend APIs through the local frontend proxy.

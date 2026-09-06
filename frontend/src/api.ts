@@ -52,6 +52,19 @@ export type AccountBalanceMismatch = {
   difference: number
 }
 
+export type TransactionJournalMismatch = {
+  transactionId: number
+  transactionType: string
+  transactionAmount: number
+  issueCodes: string[]
+  journalEntryCount: number
+  decreaseEntryCount: number
+  increaseEntryCount: number
+  distinctAccountCount: number
+  journalAmountMismatchCount: number
+  signedJournalAmount: number
+}
+
 export type ApiErrorResponse = {
   code: string
   message: string
@@ -99,6 +112,10 @@ export async function fetchJournalEntries(
 
 export async function fetchReconciliationMismatches(): Promise<AccountBalanceMismatch[]> {
   return requestJson('/api/v1/reconciliation/account-balances/mismatches')
+}
+
+export async function fetchTransactionJournalMismatches(): Promise<TransactionJournalMismatch[]> {
+  return requestJson('/api/v1/reconciliation/transaction-journals/mismatches')
 }
 
 type JsonRequestInit = Omit<RequestInit, 'body'> & {

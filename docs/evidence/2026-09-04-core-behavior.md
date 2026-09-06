@@ -70,7 +70,7 @@ Result on the local development database after journaled flows:
 - Internal transfer creates one `financial_transaction` row and two `account_journal_entry` rows.
 - Runtime failure after source withdrawal rolls back the balance change.
 - Runtime failure after flushed transaction and journal writes rolls back balances, transaction rows, and journal rows.
-- Idempotent internal transfer uses `caller_scope + operation + idempotency_key` as its unique identity.
+- Idempotent internal transfer uses `caller_scope + operation + idempotency_key` as its logical identity and stores a scoped SHA-256 digest as the database unique value.
 - Repeating the same idempotency key with the same request returns the same transfer result without a duplicate money effect.
 - Concurrent same-key idempotent transfer hardening is captured separately in `docs/evidence/2026-09-05-hardening.md`.
 - Repeating the same idempotency key with a different request fingerprint is rejected.
@@ -81,6 +81,7 @@ Result on the local development database after journaled flows:
 - Bean Validation rejects missing customer id, blank account number, missing transfer amount, and negative transfer amount before service execution.
 - Reconciliation detects direct balance mutation without journal evidence.
 - Journaled controlled seed funding plus internal transfer does not produce reconciliation mismatches.
+- Transaction journal reconciliation detects malformed transaction journal structures.
 - A test-only unsafe no-lock transfer experiment can create reconciliation mismatches under concurrent stale reads.
 - A test-only optimistic locking experiment with `@Version` allows only one concurrent stale-version transfer to commit.
 - The optimistic locking experiment leaves no reconciliation mismatches for the involved accounts after one transfer rolls back.
@@ -101,6 +102,7 @@ version  description                            success
 3        create transaction journal tables       1
 4        create idempotency record table         1
 5        add account journal keyset index        1
+6        store idempotency key digest            1
 ```
 
 Index verification:

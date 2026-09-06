@@ -10,13 +10,13 @@ class DatabaseConstraintMatcherTest {
     @Test
     void containsConstraintName_shouldInspectCauseChainMessages() {
         RuntimeException rootCause =
-                new RuntimeException("Duplicate entry for key 'uk_idempotency_scope_operation_key'");
+                new RuntimeException("Duplicate entry for key 'uk_idempotency_scope_operation_key_digest'");
         DataIntegrityViolationException exception =
                 new DataIntegrityViolationException("could not execute statement", rootCause);
 
         assertThat(DatabaseConstraintMatcher.containsConstraintName(
                 exception,
-                "uk_idempotency_scope_operation_key"
+                "uk_idempotency_scope_operation_key_digest"
         )).isTrue();
     }
 
@@ -27,7 +27,7 @@ class DatabaseConstraintMatcherTest {
 
         assertThat(DatabaseConstraintMatcher.containsConstraintName(
                 exception,
-                "uk_idempotency_scope_operation_key"
+                "uk_idempotency_scope_operation_key_digest"
         )).isFalse();
     }
 }

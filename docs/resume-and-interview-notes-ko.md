@@ -8,9 +8,9 @@ Java/Spring Boot와 MySQL 기반 금융 이체 백엔드를 구현하며, 트랜
 
 - Java 25, Spring Boot 4.1, MySQL 8.4, Flyway, JPA, Testcontainers 기반 금융 이체 정확성 검증 백엔드 구현
 - 내부이체 성공 시 transaction 1건과 account journal 2건을 기록하고, 실패 주입 테스트로 flush 이후 예외에서도 잔액/거래/journal/idempotency row가 함께 롤백됨을 검증
-- `caller_scope + operation + idempotency_key` 기반 멱등성 모델을 구현해 동일 요청 재시도와 동시 같은-key 요청은 하나의 결과로 replay하고, 동시 different-fingerprint 요청은 conflict로 거부
+- `caller_scope + operation + idempotency_key` 기반 멱등성 모델을 구현하고 원문 key 대신 scoped SHA-256 digest를 저장해 동일 요청 replay와 different-fingerprint conflict를 검증
 - no-lock, optimistic lock, pessimistic lock 동시성 실험을 구성하고, 실제 internal transfer에는 account id 순서의 ordered write lock을 적용해 deadlock 위험 완화를 Testcontainers MySQL에서 검증
-- stored balance와 journal-derived balance를 비교하는 reconciliation API를 구현하고, 직접 잔액 변조 및 정상 journaled flow를 통해 mismatch 탐지 여부 검증
+- stored balance와 journal-derived balance 비교 및 transaction journal invariant reconciliation을 구현하고, 직접 잔액 변조와 malformed journal 테스트로 mismatch 탐지 여부 검증
 - account journal 조회에 `(account_id, id)` 인덱스와 keyset pagination을 적용하고, 50,000건 synthetic journal 기준 offset pagination 대비 접근 패턴과 `EXPLAIN ANALYZE` 결과 문서화
 - React/TypeScript/Vite/TanStack Query 기반 Lab Console을 구현해 demo account, idempotent transfer replay, conflict probe, journal, reconciliation 흐름을 한 화면에서 시연
 - `scripts/demo-frontend.sh`와 GitHub Actions CI를 구성해 backend test, frontend lint/build, frontend `/api` proxy 기반 demo flow를 자동 검증
@@ -41,7 +41,7 @@ BankCore는 Java/Spring Boot와 MySQL로 만든 금융 이체 정확성 검증 �
 
 ### 멱등성은 어떻게 보장했나요?
 
-`caller_scope + operation + idempotency_key`에 unique constraint를 걸었습니다. 요청 fingerprint에는 version, operation, currency, source account, destination account, amount를 포함했습니다. 같은 key와 같은 fingerprint는 기존 transaction/journal 결과를 replay하고, 같은 key지만 fingerprint가 다르면 conflict로 거부합니다. 동시 같은-key 요청에서는 하나만 insert와 이체에 성공하고, unique key 경쟁에서 진 요청은 새 transaction에서 완료된 idempotency record를 다시 읽어 replay 또는 conflict 판단을 합니다.
+`caller_scope + operation + idempotency_key`를 멱등성의 논리적 identity로 삼았습니다. 다만 원문 key를 DB에 저장하지 않고, caller scope와 operation까지 포함한 SHA-256 digest에 unique constraint를 걸었습니다. 요청 fingerprint에는 version, operation, currency, source account, destination account, amount를 포함했습니다. 같은 key와 같은 fingerprint는 기존 transaction/journal 결과를 replay하고, 같은 key지만 fingerprint가 다르면 conflict로 거부합니다. 동시 같은-key 요청에서는 하나만 insert와 이체에 성공하고, unique key 경쟁에서 진 요청은 `REQUIRES_NEW` transaction에서 완료된 idempotency record를 다시 읽어 replay 또는 conflict 판단을 합니다. 또한 바깥 `@Transactional` caller로 감싸도 이 경계가 유지되는지 통합 테스트로 검증했습니다.
 
 ### rollback은 어떻게 검증했나요?
 
@@ -53,7 +53,7 @@ optimistic lock 실험은 두 트랜잭션이 같은 version을 읽은 뒤 동�
 
 ### reconciliation은 왜 넣었나요?
 
-잔액 row만 보면 문제가 숨어 있을 수 있습니다. 그래서 journal entry를 기준으로 계산한 잔액과 account table의 stored balance를 비교하는 reconciliation API를 만들었습니다. 정상 journaled flow는 mismatch가 없고, 직접 balance만 바꾸는 테스트는 mismatch로 탐지됩니다.
+잔액 row만 보면 문제가 숨어 있을 수 있습니다. 그래서 journal entry를 기준으로 계산한 잔액과 account table의 stored balance를 비교하는 account reconciliation을 만들었습니다. 또 internal transfer의 journal이 정확히 두 건인지, decrease/increase 방향과 account, amount가 맞는지 보는 transaction journal reconciliation도 추가했습니다. 정상 journaled flow는 mismatch가 없고, 직접 balance만 바꾸거나 malformed journal을 만든 테스트는 mismatch로 탐지됩니다.
 
 ### 프론트엔드는 왜 만들었나요?
 

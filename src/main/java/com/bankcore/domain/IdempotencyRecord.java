@@ -30,8 +30,8 @@ public class IdempotencyRecord {
     @Column(name = "operation", nullable = false, length = 50)
     private IdempotencyOperation operation;
 
-    @Column(name = "idempotency_key", nullable = false, length = 120)
-    private String idempotencyKey;
+    @Column(name = "idempotency_key_digest", nullable = false, columnDefinition = "BINARY(32)")
+    private byte[] idempotencyKeyDigest;
 
     @Column(name = "request_fingerprint", nullable = false, length = 64)
     private String requestFingerprint;
@@ -56,12 +56,12 @@ public class IdempotencyRecord {
     public IdempotencyRecord(
             String callerScope,
             IdempotencyOperation operation,
-            String idempotencyKey,
+            byte[] idempotencyKeyDigest,
             String requestFingerprint
     ) {
         this.callerScope = requireText(callerScope, "callerScope");
         this.operation = Objects.requireNonNull(operation, "operation must not be null");
-        this.idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
+        this.idempotencyKeyDigest = IdempotencyKeyDigest.copy(idempotencyKeyDigest);
         this.requestFingerprint = requireText(requestFingerprint, "requestFingerprint");
         this.status = IdempotencyStatus.PROCESSING;
     }
@@ -78,8 +78,8 @@ public class IdempotencyRecord {
         return operation;
     }
 
-    public String getIdempotencyKey() {
-        return idempotencyKey;
+    public byte[] getIdempotencyKeyDigest() {
+        return IdempotencyKeyDigest.copy(idempotencyKeyDigest);
     }
 
     public String getRequestFingerprint() {

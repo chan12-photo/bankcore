@@ -35,6 +35,7 @@ Commands run from `frontend/`:
 npm install
 npm ci
 npm run lint
+npm run test
 npm run build
 ```
 
@@ -43,6 +44,7 @@ Observed result:
 - `npm install`: dependencies up to date, 0 vulnerabilities
 - `npm ci`: clean lockfile install passed, 0 vulnerabilities
 - `npm run lint`: passed
+- `npm run test`: Vitest jsdom behavior test passed
 - `npm run build`: TypeScript build and Vite production build passed
 - Vite dev proxy check: `GET http://127.0.0.1:5173/api/v1/demo/accounts` returned demo account JSON through the frontend server
 
@@ -71,7 +73,7 @@ The full local verification wrapper is:
 ./scripts/verify-local.sh
 ```
 
-It runs backend tests, frontend install/lint/build, backend API demo, and frontend proxy demo.
+It runs backend tests, frontend install/lint/test/build, backend API demo, and frontend proxy demo.
 
 Build output observed:
 

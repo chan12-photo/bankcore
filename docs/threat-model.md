@@ -13,6 +13,7 @@ BankCore is a portfolio project using synthetic data. It is not a production ban
 - No real bank accounts
 - No secrets committed beyond local development placeholders
 - Logs should not contain full request payloads, raw idempotency keys, passwords, JDBC URLs, or complete account identifiers
+- Raw idempotency keys should not be stored in database rows or unique-index values; BankCore stores a scoped SHA-256 digest instead.
 
 ## Out of Scope
 

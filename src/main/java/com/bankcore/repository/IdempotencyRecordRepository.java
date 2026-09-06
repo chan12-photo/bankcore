@@ -8,9 +8,9 @@ import java.util.Optional;
 
 public interface IdempotencyRecordRepository extends JpaRepository<IdempotencyRecord, Long> {
 
-    Optional<IdempotencyRecord> findByCallerScopeAndOperationAndIdempotencyKey(
+    Optional<IdempotencyRecord> findByCallerScopeAndOperationAndIdempotencyKeyDigest(
             String callerScope,
             IdempotencyOperation operation,
-            String idempotencyKey
+            byte[] idempotencyKeyDigest
     );
 }

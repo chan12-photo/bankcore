@@ -1,19 +1,23 @@
 import type { FormEvent, ReactNode } from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   apiDisplayOrigin,
   fetchDemoAccounts,
   fetchJournalEntries,
   fetchReconciliationMismatches,
+  fetchTransactionJournalMismatches,
   isApiClientError,
   postInternalTransfer,
   type AccountJournalEntry,
   type DemoAccount,
+  type TransactionJournalMismatch,
   type TransferOperation,
   type TransferResponse,
 } from './api'
 import './App.css'
+
+const MAX_TRANSFER_AMOUNT = 1_000_000_000_000
 
 type TransferForm = {
   callerScope: string
@@ -42,6 +46,7 @@ type JournalRow = AccountJournalEntry & {
 
 function App() {
   const queryClient = useQueryClient()
+  const scenarioGenerationRef = useRef(0)
   const [form, setForm] = useState<TransferForm>({
     callerScope: 'bankcore-lab-console',
     idempotencyKey: createIdempotencyKey(),
@@ -63,6 +68,10 @@ function App() {
   const reconciliationQuery = useQuery({
     queryKey: ['reconciliationMismatches'],
     queryFn: fetchReconciliationMismatches,
+  })
+  const transactionJournalReconciliationQuery = useQuery({
+    queryKey: ['transactionJournalMismatches'],
+    queryFn: fetchTransactionJournalMismatches,
   })
 
   const accounts = demoAccountsQuery.data ?? []
@@ -93,6 +102,7 @@ function App() {
       queryClient.invalidateQueries({ queryKey: ['journalEntries', operation.request.sourceAccountId] }),
       queryClient.invalidateQueries({ queryKey: ['journalEntries', operation.request.destinationAccountId] }),
       queryClient.invalidateQueries({ queryKey: ['reconciliationMismatches'] }),
+      queryClient.invalidateQueries({ queryKey: ['transactionJournalMismatches'] }),
     ])
   }
 
@@ -125,7 +135,7 @@ function App() {
   const focusedJournalRows = firstResponse
     ? combinedJournalRows.filter((row) => row.transactionId === firstResponse.transactionId)
     : combinedJournalRows.slice(0, 6)
-  const journalProofReady = firstResponse !== null && focusedJournalRows.length === 2
+  const journalProof = evaluateJournalProof(firstResponse, focusedJournalRows)
   const sourceAccount = findAccount(
     accounts,
     firstResponse?.sourceAccountId ?? Number(sourceAccountId),
@@ -134,10 +144,13 @@ function App() {
     accounts,
     firstResponse?.destinationAccountId ?? Number(destinationAccountId),
   )
-  const mismatches = reconciliationQuery.data ?? []
-  const canRunTransfer = accounts.length >= 2 && !transferMutation.isPending
-  const canReplay = firstOperation !== null && firstResponse !== null && !replayMutation.isPending
-  const canProbeConflict = firstOperation !== null && !conflictMutation.isPending
+  const accountMismatches = reconciliationQuery.data ?? []
+  const transactionJournalMismatches = transactionJournalReconciliationQuery.data ?? []
+  const isAnyMutationPending =
+    transferMutation.isPending || replayMutation.isPending || conflictMutation.isPending
+  const canRunTransfer = accounts.length >= 2 && !isAnyMutationPending
+  const canReplay = firstOperation !== null && firstResponse !== null && !isAnyMutationPending
+  const canProbeConflict = firstOperation !== null && !isAnyMutationPending
 
   async function handleTransferSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -148,15 +161,22 @@ function App() {
 
     setFormError(null)
     setLastError(null)
+    setFirstOperation(null)
+    setFirstResponse(null)
     setReplayCheck(null)
     setConflictCheck(null)
+    const scenarioGeneration = ++scenarioGenerationRef.current
 
     try {
       const response = await transferMutation.mutateAsync(operation)
-      setFirstOperation(operation)
-      setFirstResponse(response)
+      if (scenarioGeneration === scenarioGenerationRef.current) {
+        setFirstOperation(operation)
+        setFirstResponse(response)
+      }
     } catch (error) {
-      setLastError(toError(error))
+      if (scenarioGeneration === scenarioGenerationRef.current) {
+        setLastError(toError(error))
+      }
     }
   }
 
@@ -166,15 +186,21 @@ function App() {
     }
 
     setLastError(null)
+    setReplayCheck(null)
+    const scenarioGeneration = scenarioGenerationRef.current
 
     try {
       const response = await replayMutation.mutateAsync(firstOperation)
-      setReplayCheck({
-        response,
-        identical: transferResponsesMatch(firstResponse, response),
-      })
+      if (scenarioGeneration === scenarioGenerationRef.current) {
+        setReplayCheck({
+          response,
+          identical: transferResponsesMatch(firstResponse, response),
+        })
+      }
     } catch (error) {
-      setLastError(toError(error))
+      if (scenarioGeneration === scenarioGenerationRef.current) {
+        setLastError(toError(error))
+      }
     }
   }
 
@@ -183,7 +209,7 @@ function App() {
       return
     }
 
-    const testedAmount = firstOperation.request.amount + 1
+    const testedAmount = chooseConflictProbeAmount(firstOperation.request.amount)
     const conflictOperation: TransferOperation = {
       ...firstOperation,
       request: {
@@ -193,10 +219,14 @@ function App() {
     }
 
     setLastError(null)
+    setConflictCheck(null)
+    const scenarioGeneration = scenarioGenerationRef.current
 
     try {
       const response = await conflictMutation.mutateAsync(conflictOperation)
-      setConflictCheck({ kind: 'unexpected-success', testedAmount, response })
+      if (scenarioGeneration === scenarioGenerationRef.current) {
+        setConflictCheck({ kind: 'unexpected-success', testedAmount, response })
+      }
     } catch (error) {
       const normalizedError = toError(error)
       const expected =
@@ -204,15 +234,18 @@ function App() {
         normalizedError.status === 409 &&
         normalizedError.code === 'IDEMPOTENCY_KEY_CONFLICT'
 
-      setConflictCheck({
-        kind: expected ? 'expected-conflict' : 'unexpected-error',
-        testedAmount,
-        error: normalizedError,
-      })
+      if (scenarioGeneration === scenarioGenerationRef.current) {
+        setConflictCheck({
+          kind: expected ? 'expected-conflict' : 'unexpected-error',
+          testedAmount,
+          error: normalizedError,
+        })
+      }
     }
   }
 
   function handleNewScenario() {
+    scenarioGenerationRef.current += 1
     setForm((current) => ({
       ...current,
       idempotencyKey: createIdempotencyKey(),
@@ -267,6 +300,11 @@ function App() {
       return null
     }
 
+    if (amount > MAX_TRANSFER_AMOUNT) {
+      setFormError(`Amount must be ${formatMoney(MAX_TRANSFER_AMOUNT)} or less.`)
+      return null
+    }
+
     if (callerScope === '' || idempotencyKey === '') {
       setFormError('Caller scope and idempotency key are required headers.')
       return null
@@ -318,6 +356,7 @@ function App() {
                   }`}
                   key={account.accountId}
                   type="button"
+                  disabled={isAnyMutationPending}
                   onClick={() => handleSourceChange(String(account.accountId))}
                 >
                   <span className="account-name">{account.customerName}</span>
@@ -338,7 +377,11 @@ function App() {
           <form className="transfer-form" onSubmit={handleTransferSubmit}>
             <label>
               <span>Source account</span>
-              <select value={sourceAccountId} onChange={(event) => handleSourceChange(event.target.value)}>
+              <select
+                value={sourceAccountId}
+                disabled={isAnyMutationPending}
+                onChange={(event) => handleSourceChange(event.target.value)}
+              >
                 {accounts.map((account) => (
                   <option key={account.accountId} value={account.accountId}>
                     {account.customerName} / {account.accountNumber}
@@ -351,6 +394,7 @@ function App() {
               <span>Destination account</span>
               <select
                 value={destinationAccountId}
+                disabled={isAnyMutationPending}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, destinationAccountId: event.target.value }))
                 }
@@ -372,6 +416,7 @@ function App() {
                 step="1"
                 type="number"
                 value={form.amount}
+                disabled={isAnyMutationPending}
                 onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
               />
             </label>
@@ -380,6 +425,7 @@ function App() {
               <span>X-Caller-Scope</span>
               <input
                 value={form.callerScope}
+                disabled={isAnyMutationPending}
                 onChange={(event) => setForm((current) => ({ ...current, callerScope: event.target.value }))}
               />
             </label>
@@ -388,6 +434,7 @@ function App() {
               <span>Idempotency-Key</span>
               <input
                 value={form.idempotencyKey}
+                disabled={isAnyMutationPending}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, idempotencyKey: event.target.value }))
                 }
@@ -398,7 +445,12 @@ function App() {
               <button className="primary-action" type="submit" disabled={!canRunTransfer}>
                 {transferMutation.isPending ? 'Running transfer...' : 'Run transfer'}
               </button>
-              <button className="secondary-action" type="button" onClick={handleNewScenario}>
+              <button
+                className="secondary-action"
+                type="button"
+                onClick={handleNewScenario}
+                disabled={isAnyMutationPending}
+              >
                 New key
               </button>
             </div>
@@ -444,10 +496,8 @@ function App() {
             title="Journal entries"
             endpoint="GET /api/v1/accounts/{accountId}/journal-entries"
           />
-          <div className={`proof-strip ${journalProofReady ? 'is-good' : ''}`}>
-            {journalProofReady
-              ? 'Two journal rows found for the captured transfer.'
-              : 'After a transfer, this panel should show one debit-side row and one credit-side row.'}
+          <div className={`proof-strip ${journalProof.ready ? 'is-good' : firstResponse ? 'is-bad' : ''}`}>
+            {journalProof.message}
           </div>
           <QueryState
             isLoading={sourceJournalQuery.isLoading || destinationJournalQuery.isLoading}
@@ -490,30 +540,24 @@ function App() {
           <PanelHeader
             eyebrow="Step 5"
             title="Reconciliation"
-            endpoint="GET /api/v1/reconciliation/account-balances/mismatches"
+            endpoint="GET /api/v1/reconciliation/*/mismatches"
           />
           <QueryState
-            isLoading={reconciliationQuery.isLoading}
-            error={reconciliationQuery.error}
+            isLoading={reconciliationQuery.isLoading || transactionJournalReconciliationQuery.isLoading}
+            error={reconciliationQuery.error ?? transactionJournalReconciliationQuery.error}
             empty={false}
             emptyText=""
           >
-            {mismatches.length === 0 ? (
+            {accountMismatches.length === 0 && transactionJournalMismatches.length === 0 ? (
               <div className="reconciliation-ok">
                 <span>No mismatches</span>
-                <strong>Stored balances match journal-derived balances.</strong>
+                <strong>Account balances and transaction journals both reconcile.</strong>
               </div>
             ) : (
-              <div className="mismatch-list">
-                {mismatches.map((mismatch) => (
-                  <div className="mismatch-card" key={mismatch.accountId}>
-                    <strong>Account #{mismatch.accountId}</strong>
-                    <span>Stored {formatMoney(mismatch.storedBalance)}</span>
-                    <span>Journal {formatMoney(mismatch.journalBalance)}</span>
-                    <span>Diff {formatSignedMoney(mismatch.difference)}</span>
-                  </div>
-                ))}
-              </div>
+              <ReconciliationMismatchList
+                accountMismatches={accountMismatches}
+                transactionJournalMismatches={transactionJournalMismatches}
+              />
             )}
           </QueryState>
         </section>
@@ -525,7 +569,7 @@ function App() {
           <EvidenceItem title="Atomic transfer" body="One API call updates both account balances and writes journal rows." />
           <EvidenceItem title="Idempotent replay" body="The same key and same body return the original transaction response." />
           <EvidenceItem title="Conflict guard" body="The same key with a changed amount should return HTTP 409." />
-          <EvidenceItem title="Reconciliation" body="The mismatch endpoint should stay empty after normal traffic." />
+          <EvidenceItem title="Reconciliation" body="Account balances and transaction journal invariants should stay clean." />
         </div>
       </details>
     </main>
@@ -675,6 +719,46 @@ function ConflictStatus({ conflictCheck }: { conflictCheck: ConflictCheck | null
   )
 }
 
+function ReconciliationMismatchList({
+  accountMismatches,
+  transactionJournalMismatches,
+}: {
+  accountMismatches: {
+    accountId: number
+    storedBalance: number
+    journalBalance: number
+    difference: number
+  }[]
+  transactionJournalMismatches: TransactionJournalMismatch[]
+}) {
+  return (
+    <div className="mismatch-list">
+      {accountMismatches.length > 0 && <h3>Account balance mismatches</h3>}
+      {accountMismatches.map((mismatch) => (
+        <div className="mismatch-card" key={`account-${mismatch.accountId}`}>
+          <strong>Account #{mismatch.accountId}</strong>
+          <span>Stored {formatMoney(mismatch.storedBalance)}</span>
+          <span>Journal {formatMoney(mismatch.journalBalance)}</span>
+          <span>Diff {formatSignedMoney(mismatch.difference)}</span>
+        </div>
+      ))}
+
+      {transactionJournalMismatches.length > 0 && <h3>Transaction journal mismatches</h3>}
+      {transactionJournalMismatches.map((mismatch) => (
+        <div className="mismatch-card" key={`transaction-${mismatch.transactionId}`}>
+          <strong>
+            Transaction #{mismatch.transactionId} / {mismatch.transactionType}
+          </strong>
+          <span>Amount {formatMoney(mismatch.transactionAmount)}</span>
+          <span>Journal rows {mismatch.journalEntryCount}</span>
+          <span>Signed journal sum {formatSignedMoney(mismatch.signedJournalAmount)}</span>
+          <span>Issues {mismatch.issueCodes.join(', ')}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function EvidenceItem({ title, body }: { title: string; body: string }) {
   return (
     <div className="evidence-item">
@@ -682,6 +766,52 @@ function EvidenceItem({ title, body }: { title: string; body: string }) {
       <span>{body}</span>
     </div>
   )
+}
+
+function evaluateJournalProof(
+  response: TransferResponse | null,
+  rows: JournalRow[],
+): { ready: boolean; message: string } {
+  if (response === null) {
+    return {
+      ready: false,
+      message: 'After a transfer, this panel should show one debit-side row and one credit-side row.',
+    }
+  }
+
+  if (rows.length !== 2) {
+    return {
+      ready: false,
+      message: `Expected two journal rows for transaction #${response.transactionId}, found ${rows.length}.`,
+    }
+  }
+
+  const sourceRow = rows.find(
+    (row) =>
+      row.accountId === response.sourceAccountId &&
+      row.entryNo === 1 &&
+      row.movementType === 'BALANCE_DECREASE' &&
+      row.amount === response.amount,
+  )
+  const destinationRow = rows.find(
+    (row) =>
+      row.accountId === response.destinationAccountId &&
+      row.entryNo === 2 &&
+      row.movementType === 'BALANCE_INCREASE' &&
+      row.amount === response.amount,
+  )
+
+  if (sourceRow === undefined || destinationRow === undefined) {
+    return {
+      ready: false,
+      message: 'Journal rows were found, but their account, movement, entry number, or amount did not match.',
+    }
+  }
+
+  return {
+    ready: true,
+    message: 'Debit and credit journal rows match the captured transfer invariant.',
+  }
 }
 
 function buildJournalRows(
@@ -721,7 +851,11 @@ function getAccountLabel(accounts: DemoAccount[], accountId: number): string {
 }
 
 function createIdempotencyKey(): string {
-  return `lab-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+  return `lab-${crypto.randomUUID()}`
+}
+
+function chooseConflictProbeAmount(amount: number): number {
+  return amount < MAX_TRANSFER_AMOUNT ? amount + 1 : amount - 1
 }
 
 function transferResponsesMatch(left: TransferResponse, right: TransferResponse): boolean {

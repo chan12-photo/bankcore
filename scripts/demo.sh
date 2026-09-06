@@ -199,4 +199,15 @@ if [[ "${MISMATCHES}" != "[]" ]]; then
 fi
 
 echo
+echo "Transaction journal mismatches:"
+TRANSACTION_MISMATCHES="$(curl -fsS "${BASE_URL}/api/v1/reconciliation/transaction-journals/mismatches")"
+echo "${TRANSACTION_MISMATCHES}"
+echo
+
+if [[ "${TRANSACTION_MISMATCHES}" != "[]" ]]; then
+  echo "Expected no transaction journal mismatches." >&2
+  exit 1
+fi
+
+echo
 echo "Demo completed successfully."

@@ -30,6 +30,7 @@ class OpenApiIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/accounts'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/transfers/internal'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/reconciliation/account-balances/mismatches'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/reconciliation/transaction-journals/mismatches'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/accounts/{accountId}/journal-entries'].get").exists());
     }
 

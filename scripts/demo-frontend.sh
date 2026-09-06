@@ -126,10 +126,8 @@ if ! wait_for_url "${BACKEND_URL}/api/v1/health" "BankCore backend"; then
   exit 1
 fi
 
-echo "Ensuring frontend dependencies are installed..."
-if [[ ! -d frontend/node_modules ]]; then
-  (cd frontend && npm ci)
-fi
+echo "Installing frontend dependencies from lockfile..."
+(cd frontend && npm ci)
 
 echo "Starting Vite frontend on ${FRONTEND_URL}..."
 (
@@ -227,6 +225,17 @@ echo
 
 if [[ "${MISMATCHES}" != "[]" ]]; then
   echo "Expected no reconciliation mismatches." >&2
+  exit 1
+fi
+
+echo
+echo "Transaction journal mismatches through frontend proxy:"
+TRANSACTION_MISMATCHES="$(curl -fsS "${FRONTEND_URL}/api/v1/reconciliation/transaction-journals/mismatches")"
+echo "${TRANSACTION_MISMATCHES}"
+echo
+
+if [[ "${TRANSACTION_MISMATCHES}" != "[]" ]]; then
+  echo "Expected no transaction journal mismatches." >&2
   exit 1
 fi
 

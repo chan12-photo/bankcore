@@ -112,7 +112,8 @@ The backend demo script now verifies:
 - Same-request idempotent replay returns the identical response.
 - Same-key changed-body requests return HTTP `409` with `IDEMPOTENCY_KEY_CONFLICT`.
 - Source and destination journal lookups both contain the captured transfer transaction.
-- Reconciliation returns `[]`.
+- Account balance reconciliation returns `[]`.
+- Transaction journal reconciliation returns `[]`.
 
 Full local verification is available through:
 
@@ -120,7 +121,7 @@ Full local verification is available through:
 ./scripts/verify-local.sh
 ```
 
-This runs the backend test suite, frontend install/lint/build, backend API demo, and frontend proxy demo.
+This runs the backend test suite, frontend install/lint/test/build, backend API demo, and frontend proxy demo.
 
 OpenAPI endpoints were verified manually on the demo server:
 
@@ -135,7 +136,9 @@ GET /swagger-ui.html -> 302 /swagger-ui/index.html
 
 `TransferService` now executes idempotent transfer claims through `TransactionTemplate`.
 
-If two identical requests race to insert the same `(caller_scope, operation, idempotency_key)` record, one request wins the insert and performs the transfer. A losing request catches the unique-key `DataIntegrityViolationException` outside the failed transaction and opens a fresh transaction to replay the winning completed idempotency record.
+If two identical requests race to insert the same scoped idempotency key digest, one request wins the insert and performs the transfer. A losing request catches the unique-key `DataIntegrityViolationException` outside the failed transaction and opens a fresh `REQUIRES_NEW` transaction to replay the winning completed idempotency record.
+
+The integration test `transferInternalIdempotent_shouldReplayConcurrentSameKeySafelyFromAmbientTransactionalCaller` wraps the service in an ambient `@Transactional` caller and still verifies one committed transfer effect plus replayed results. This documents the command boundary directly in code instead of relying on the current controller call path.
 
 The integration test `transferInternalIdempotent_shouldApplyMoneyEffectOnce_whenSameRequestArrivesConcurrently` sends 50 same-key requests concurrently and verifies:
 
@@ -155,7 +158,9 @@ The integration test `transferInternalIdempotent_shouldRejectConcurrentSameKeyWi
 - Only two journal rows are created.
 - Only one idempotency record is created.
 
-`DataIntegrityViolationException` recovery is now constrained by database constraint name. The transfer service only replays after a unique-key race when the cause chain contains `uk_idempotency_scope_operation_key`; otherwise the original integrity exception is rethrown.
+`DataIntegrityViolationException` recovery is now constrained by database constraint name. The transfer service only replays after a unique-key race when the cause chain contains `uk_idempotency_scope_operation_key_digest`; otherwise the original integrity exception is rethrown.
+
+Raw `Idempotency-Key` values are no longer stored in `idempotency_record`. The service validates the caller-provided key, transforms `(caller_scope, operation, idempotency_key)` into a domain-separated SHA-256 digest, and enforces uniqueness on `(caller_scope, operation, idempotency_key_digest)`. This also makes the raw key comparison case-sensitive even though the surrounding MySQL text collation is case-insensitive.
 
 ### Non-Journaled Money Movement
 
@@ -201,7 +206,8 @@ The `demo` Spring profile creates two synthetic journal-funded accounts:
 - Performs an idempotent internal transfer.
 - Replays the same request and verifies the response is identical.
 - Reads source account journal entries.
-- Verifies reconciliation returns no mismatches.
+- Verifies account balance reconciliation returns no mismatches.
+- Verifies transaction journal reconciliation returns no mismatches.
 
 ### API Documentation
 
