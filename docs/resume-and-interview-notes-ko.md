@@ -9,7 +9,7 @@ Java/Spring Boot와 MySQL 기반 금융 이체 백엔드를 구현하며, 트랜
 - Java 25, Spring Boot 4.1, MySQL 8.4, Flyway, JPA, Testcontainers 기반 금융 이체 정확성 검증 백엔드 구현
 - 내부이체 성공 시 transaction 1건과 account journal 2건을 기록하고, 실패 주입 테스트로 flush 이후 예외에서도 잔액/거래/journal/idempotency row가 함께 롤백됨을 검증
 - `caller_scope + operation + idempotency_key` 기반 멱등성 모델을 구현하고 원문 key 대신 scoped SHA-256 digest를 저장해 동일 요청 replay와 different-fingerprint conflict를 검증
-- no-lock, optimistic lock, pessimistic lock 동시성 실험을 구성하고, 실제 internal transfer에는 account id 순서의 ordered write lock을 적용해 deadlock 위험 완화를 Testcontainers MySQL에서 검증
+- no-lock, optimistic lock, pessimistic lock 동시성 실험을 구성하고, 실제 internal transfer에는 낮은 account id부터 순차 획득하는 ordered write lock을 적용해 deadlock 위험 완화를 Testcontainers MySQL에서 검증
 - stored balance와 journal-derived balance 비교 및 transaction journal invariant reconciliation을 구현하고, 직접 잔액 변조와 malformed journal 테스트로 mismatch 탐지 여부 검증
 - account journal 조회에 `(account_id, id)` 인덱스와 keyset pagination을 적용하고, 50,000건 synthetic journal 기준 offset pagination 대비 접근 패턴과 `EXPLAIN ANALYZE` 결과 문서화
 - React/TypeScript/Vite/TanStack Query 기반 Lab Console을 구현해 demo account, idempotent transfer replay, conflict probe, journal, reconciliation 흐름을 한 화면에서 시연
@@ -49,7 +49,7 @@ service 내부에 테스트용 failure point를 두고 출금 직후, 그리고 
 
 ### optimistic lock과 pessimistic lock 차이를 어떻게 보여줬나요?
 
-optimistic lock 실험은 두 트랜잭션이 같은 version을 읽은 뒤 동시에 갱신하게 만들어 하나만 commit되고 하나는 rollback되는 결과를 확인했습니다. API 경계에서는 이런 optimistic locking 실패를 `CONCURRENT_MODIFICATION` 409 응답으로 변환해 재시도 가능한 충돌로 표현했습니다. pessimistic lock 실험은 source account row를 `PESSIMISTIC_WRITE`로 잠가 두 번째 요청이 첫 번째 commit 이후 최신 잔액을 보게 만들었습니다. 실제 internal transfer에서는 두 계좌를 항상 account id 순서로 잠가 반대 방향 이체의 deadlock 위험을 줄였습니다.
+optimistic lock 실험은 두 트랜잭션이 같은 version을 읽은 뒤 동시에 갱신하게 만들어 하나만 commit되고 하나는 optimistic-lock rollback이 되는 결과를 확인했습니다. API 경계에서는 이런 optimistic locking 실패를 `CONCURRENT_MODIFICATION` 409 응답으로 변환해 재시도 가능한 충돌로 표현했습니다. pessimistic lock 실험은 source account row를 `PESSIMISTIC_WRITE`로 잠가 두 번째 요청이 첫 번째 commit 이후 최신 잔액을 보게 만들고, 잔액 부족 롤백으로 수렴하는지 확인했습니다. 실제 internal transfer에서는 두 계좌를 항상 낮은 account id부터 순차적으로 잠가 반대 방향 이체의 deadlock 위험을 줄였습니다.
 
 ### reconciliation은 왜 넣었나요?
 

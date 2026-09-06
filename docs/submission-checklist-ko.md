@@ -79,7 +79,7 @@ npm run build
 - demo profile은 반복 실행 시 Alice/Bob 계좌를 journaled 방식으로 기준 잔액에 재정렬하므로 walkthrough 시작값이 예측 가능합니다.
 - DB integrity 예외는 기대한 unique constraint 이름이 확인될 때만 business exception으로 변환합니다.
 - no-lock, optimistic lock, pessimistic lock 실험을 통해 동시성 실패와 방어 전략을 비교했습니다.
-- 실제 internal transfer는 두 계좌를 account id 순서로 pessimistic write lock 하여 반대 방향 이체 deadlock 위험을 줄였습니다.
+- 실제 internal transfer는 두 계좌를 낮은 account id부터 순차적으로 pessimistic write lock 하여 반대 방향 이체 deadlock 위험을 줄였습니다.
 - stored balance와 journal-derived balance를 비교하는 reconciliation API로 불일치를 탐지합니다.
 - account journal 조회는 `(account_id, id)` 인덱스와 keyset pagination으로 구현했고, 50,000건 synthetic benchmark evidence를 남겼습니다.
 - OpenAPI JSON과 Swagger UI를 제공하고, core API path가 문서화되는지 테스트합니다.

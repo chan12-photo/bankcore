@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.context.ImportTestcontainers;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -97,7 +98,8 @@ class OptimisticLockTransferConcurrencyTest {
             executorService.shutdownNow();
         }
 
-        assertThat(attempts).containsExactlyInAnyOrder(TransferAttempt.SUCCESS, TransferAttempt.ROLLED_BACK);
+        assertThat(attempts)
+                .containsExactlyInAnyOrder(TransferAttempt.SUCCESS, TransferAttempt.OPTIMISTIC_LOCK_ROLLBACK);
         assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(4_000L);
         long firstDestinationBalance =
                 accountRepository.findById(firstDestinationAccount.getId()).orElseThrow().getBalance();
@@ -119,7 +121,7 @@ class OptimisticLockTransferConcurrencyTest {
 
     private enum TransferAttempt {
         SUCCESS,
-        ROLLED_BACK
+        OPTIMISTIC_LOCK_ROLLBACK
     }
 
     private static class OptimisticTransferExperiment {
@@ -152,8 +154,8 @@ class OptimisticLockTransferConcurrencyTest {
                         amount
                 ));
                 return TransferAttempt.SUCCESS;
-            } catch (RuntimeException exception) {
-                return TransferAttempt.ROLLED_BACK;
+            } catch (OptimisticLockingFailureException exception) {
+                return TransferAttempt.OPTIMISTIC_LOCK_ROLLBACK;
             }
         }
 

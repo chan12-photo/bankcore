@@ -36,16 +36,16 @@ Completed:
 - Idempotency key uniqueness is enforced on a binary digest, making raw key semantics case-sensitive.
 - Controlled seed funding service records test funds as transaction and journal rows without exposing a public deposit API.
 - Account service no longer exposes non-journaled deposit or withdrawal service methods.
-- Internal transfer loads both transfer accounts with pessimistic write locks in deterministic account-id order.
+- Internal transfer acquires per-account pessimistic write locks sequentially, always lower account id first.
 - Opposite-direction concurrent transfers are covered by an ordered-lock integration test to reduce deadlock risk.
 - Account balance reconciliation service compares stored balances against journal-derived balances.
 - Reconciliation API reports mismatched accounts for evidence and diagnostics.
 - Transaction journal reconciliation service detects malformed transaction journal structures, including missing entries, wrong movement directions, same-account transfer pairs, and amount mismatches.
 - Reconciliation API reports transaction journal mismatches separately from account balance mismatches.
 - Test-only unsafe no-lock race experiment demonstrates stale-balance overwrite and reconciliation mismatch.
-- Test-only optimistic locking race experiment demonstrates one successful transfer, one rolled-back transfer, and no reconciliation mismatch.
+- Test-only optimistic locking race experiment demonstrates one successful transfer, one optimistic-lock rollback, and no reconciliation mismatch.
 - Optimistic locking failures are mapped to a stable `409 CONFLICT` API response instead of leaking as a generic server error.
-- Test-only pessimistic write lock race experiment demonstrates row-level serialization and no reconciliation mismatch.
+- Test-only pessimistic write lock race experiment demonstrates row-level serialization, an insufficient-balance rollback on the loser, and no reconciliation mismatch.
 - Transfer API returns stable `ApiErrorResponse` bodies for missing headers and malformed request bodies.
 - Request DTOs use Bean Validation for required fields and positive transfer amounts.
 - Request DTO validation now also mirrors key database limits for customer names, account numbers, account ids, and transfer amounts.

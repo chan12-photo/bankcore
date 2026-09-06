@@ -7,6 +7,7 @@ import com.bankcore.domain.FinancialTransaction;
 import com.bankcore.domain.JournalMovementType;
 import com.bankcore.domain.TransactionType;
 import com.bankcore.exception.AccountNotFoundException;
+import com.bankcore.exception.InsufficientBalanceException;
 import com.bankcore.repository.AccountJournalEntryRepository;
 import com.bankcore.repository.AccountRepository;
 import com.bankcore.repository.CustomerRepository;
@@ -102,7 +103,7 @@ class PessimisticLockTransferConcurrencyTest {
         }
 
         assertThat(List.of(firstAttempt, secondAttempt))
-                .containsExactlyInAnyOrder(TransferAttempt.SUCCESS, TransferAttempt.ROLLED_BACK);
+                .containsExactlyInAnyOrder(TransferAttempt.SUCCESS, TransferAttempt.INSUFFICIENT_BALANCE_ROLLBACK);
         assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(4_000L);
         long firstDestinationBalance =
                 accountRepository.findById(firstDestinationAccount.getId()).orElseThrow().getBalance();
@@ -124,7 +125,7 @@ class PessimisticLockTransferConcurrencyTest {
 
     private enum TransferAttempt {
         SUCCESS,
-        ROLLED_BACK
+        INSUFFICIENT_BALANCE_ROLLBACK
     }
 
     private static class PessimisticTransferExperiment {
@@ -166,8 +167,8 @@ class PessimisticLockTransferConcurrencyTest {
                         continueAfterSourceLock
                 ));
                 return TransferAttempt.SUCCESS;
-            } catch (RuntimeException exception) {
-                return TransferAttempt.ROLLED_BACK;
+            } catch (InsufficientBalanceException exception) {
+                return TransferAttempt.INSUFFICIENT_BALANCE_ROLLBACK;
             }
         }
 

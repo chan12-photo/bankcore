@@ -264,28 +264,28 @@ public class TransferService {
         if (sourceAccountId == null || destinationAccountId == null) {
             throw new AccountNotFoundException(null);
         }
-        List<Long> accountIds = sourceAccountId.compareTo(destinationAccountId) < 0
-                ? List.of(sourceAccountId, destinationAccountId)
-                : List.of(destinationAccountId, sourceAccountId);
-        List<Account> lockedAccounts = accountRepository.findAllByIdInOrderByIdForUpdate(accountIds);
 
-        Account sourceAccount = null;
-        Account destinationAccount = null;
-        for (Account account : lockedAccounts) {
-            if (account.getId().equals(sourceAccountId)) {
-                sourceAccount = account;
-            }
-            if (account.getId().equals(destinationAccountId)) {
-                destinationAccount = account;
-            }
-        }
-        if (sourceAccount == null) {
-            throw new AccountNotFoundException(sourceAccountId);
-        }
-        if (destinationAccount == null) {
-            throw new AccountNotFoundException(destinationAccountId);
-        }
+        Long firstAccountId = sourceAccountId.compareTo(destinationAccountId) < 0
+                ? sourceAccountId
+                : destinationAccountId;
+        Long secondAccountId = sourceAccountId.compareTo(destinationAccountId) < 0
+                ? destinationAccountId
+                : sourceAccountId;
+        Account firstLockedAccount = findAccountForUpdate(firstAccountId);
+        Account secondLockedAccount = findAccountForUpdate(secondAccountId);
+
+        Account sourceAccount = firstLockedAccount.getId().equals(sourceAccountId)
+                ? firstLockedAccount
+                : secondLockedAccount;
+        Account destinationAccount = firstLockedAccount.getId().equals(destinationAccountId)
+                ? firstLockedAccount
+                : secondLockedAccount;
         return new LockedTransferAccounts(sourceAccount, destinationAccount);
+    }
+
+    private Account findAccountForUpdate(Long accountId) {
+        return accountRepository.findByIdForUpdate(accountId)
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
     }
 
     private static void validateDistinctAccounts(Long sourceAccountId, Long destinationAccountId) {

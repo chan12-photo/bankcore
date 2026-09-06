@@ -237,7 +237,7 @@ This intentionally chooses a clear `409 CONFLICT` API policy for stale concurren
 
 ### Ordered Pessimistic Account Locks
 
-Production internal transfer now loads both participating accounts with `PESSIMISTIC_WRITE` locks in deterministic account-id order, then maps the loaded entities back to the requested source and destination roles.
+Production internal transfer now acquires `PESSIMISTIC_WRITE` locks with separate account lookups, always lower account id first, then maps the locked entities back to the requested source and destination roles.
 
 This avoids the classic opposite-direction deadlock pattern where one transaction locks account A then waits for B while another locks account B then waits for A.
 
@@ -247,6 +247,8 @@ The integration test `transferInternalIdempotent_shouldSerializeOppositeDirectio
 - Account B to account A for `4000`.
 
 Both complete successfully, final balances reflect both transfers, and the database contains exactly two financial transactions, four journal rows, and two idempotency records for the pair of requests.
+
+The lock implementation is deliberately direct: it locks the lower id account, then the higher id account. The optimistic and pessimistic concurrency experiments also classify only their expected rollback causes as normal outcomes, so unrelated runtime exceptions do not accidentally satisfy the tests.
 
 ## Remaining Deliberate Choice
 

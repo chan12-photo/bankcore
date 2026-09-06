@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface AccountRepository extends JpaRepository<Account, Long> {
@@ -21,7 +20,4 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     @Query("select account from Account account where account.id = :accountId")
     Optional<Account> findByIdForUpdate(@Param("accountId") Long accountId);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select account from Account account where account.id in :accountIds order by account.id")
-    List<Account> findAllByIdInOrderByIdForUpdate(@Param("accountIds") List<Long> accountIds);
 }
