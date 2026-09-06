@@ -17,11 +17,11 @@ The checkpoint proves that the project is not only implemented, but also repeata
 
 ## Verified Code Checkpoint
 
-- Commit: `7a6e480d2447e85a5314cdba98ff4583ccd00f58`
-- Short commit: `7a6e480`
+- Commit: `a441d055ac9dabf7e2166f4c078c4d8e3bb1c3c3`
+- Short commit: `a441d05`
 - Branch: `main`
 - CI workflow: `CI`
-- CI run: `https://github.com/chan12-photo/bankcore/actions/runs/34031055029`
+- CI run: `https://github.com/chan12-photo/bankcore/actions/runs/34031445684`
 - CI result: success
 
 The successful CI job completed these steps:
@@ -33,7 +33,7 @@ The successful CI job completed these steps:
 - `npm run build`
 - `./scripts/demo-frontend.sh`
 
-This checkpoint also includes the transfer concurrency hardening pass, database-backed health readiness, cursor-shaped journal pagination responses, and database enum check constraints.
+This checkpoint also includes the transfer concurrency hardening pass, database-backed health readiness, cursor-shaped journal pagination responses, database enum check constraints, localhost-only default binds, environment-overridable datasource settings, and semantic demo-script JSON assertions.
 
 ## Local Verification Command
 
