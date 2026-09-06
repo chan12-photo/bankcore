@@ -128,9 +128,9 @@ function App() {
   const combinedJournalRows = buildJournalRows(
     accounts,
     journalSourceAccountId,
-    sourceJournalQuery.data ?? [],
+    sourceJournalQuery.data?.items ?? [],
     journalDestinationAccountId,
-    destinationJournalQuery.data ?? [],
+    destinationJournalQuery.data?.items ?? [],
   )
   const focusedJournalRows = firstResponse
     ? combinedJournalRows.filter((row) => row.transactionId === firstResponse.transactionId)

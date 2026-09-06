@@ -49,10 +49,12 @@ class AccountJournalControllerIntegrationTest {
         String firstPage = mockMvc.perform(get("/api/v1/accounts/{accountId}/journal-entries", account.getId())
                         .param("limit", "2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].amount").value(3_000))
-                .andExpect(jsonPath("$[0].balanceAfter").value(6_000))
-                .andExpect(jsonPath("$[1].amount").value(2_000))
-                .andExpect(jsonPath("$[1].balanceAfter").value(3_000))
+                .andExpect(jsonPath("$.items[0].amount").value(3_000))
+                .andExpect(jsonPath("$.items[0].balanceAfter").value(6_000))
+                .andExpect(jsonPath("$.items[1].amount").value(2_000))
+                .andExpect(jsonPath("$.items[1].balanceAfter").value(3_000))
+                .andExpect(jsonPath("$.nextCursor").exists())
+                .andExpect(jsonPath("$.hasNext").value(true))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -62,9 +64,10 @@ class AccountJournalControllerIntegrationTest {
                         .param("beforeEntryId", beforeEntryId.toString())
                         .param("limit", "2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].amount").value(1_000))
-                .andExpect(jsonPath("$[0].balanceAfter").value(1_000))
-                .andExpect(jsonPath("$[1]").doesNotExist());
+                .andExpect(jsonPath("$.items[0].amount").value(1_000))
+                .andExpect(jsonPath("$.items[0].balanceAfter").value(1_000))
+                .andExpect(jsonPath("$.items[1]").doesNotExist())
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 
     @Test
@@ -73,6 +76,16 @@ class AccountJournalControllerIntegrationTest {
 
         mockMvc.perform(get("/api/v1/accounts/{accountId}/journal-entries", account.getId())
                         .param("limit", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PAGE_REQUEST"));
+    }
+
+    @Test
+    void findRecentEntries_shouldRejectInvalidBeforeEntryId() throws Exception {
+        Account account = createZeroBalanceAccount();
+
+        mockMvc.perform(get("/api/v1/accounts/{accountId}/journal-entries", account.getId())
+                        .param("beforeEntryId", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_PAGE_REQUEST"));
     }

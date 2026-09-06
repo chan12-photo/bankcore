@@ -1,7 +1,9 @@
 package com.bankcore.controller;
 
 import com.bankcore.controller.dto.AccountJournalEntryResponse;
+import com.bankcore.controller.dto.AccountJournalPageResponse;
 import com.bankcore.service.AccountJournalEntryResult;
+import com.bankcore.service.AccountJournalPageResult;
 import com.bankcore.service.AccountJournalQueryService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,14 +24,16 @@ public class AccountJournalController {
     }
 
     @GetMapping
-    public List<AccountJournalEntryResponse> findRecentEntries(
+    public AccountJournalPageResponse findRecentEntries(
             @PathVariable Long accountId,
             @RequestParam(required = false) Long beforeEntryId,
             @RequestParam(defaultValue = "20") int limit
     ) {
-        return accountJournalQueryService.findRecentEntries(accountId, beforeEntryId, limit).stream()
+        AccountJournalPageResult page = accountJournalQueryService.findRecentEntries(accountId, beforeEntryId, limit);
+        List<AccountJournalEntryResponse> items = page.items().stream()
                 .map(AccountJournalController::toResponse)
                 .toList();
+        return new AccountJournalPageResponse(items, page.nextCursor(), page.hasNext());
     }
 
     private static AccountJournalEntryResponse toResponse(AccountJournalEntryResult result) {

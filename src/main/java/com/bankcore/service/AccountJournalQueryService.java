@@ -25,14 +25,20 @@ public class AccountJournalQueryService {
     }
 
     @Transactional(readOnly = true)
-    public List<AccountJournalEntryResult> findRecentEntries(Long accountId, Long beforeEntryId, int limit) {
+    public AccountJournalPageResult findRecentEntries(Long accountId, Long beforeEntryId, int limit) {
         validateAccountExists(accountId);
         validateLimit(limit);
+        validateBeforeEntryId(beforeEntryId);
 
-        if (beforeEntryId == null) {
-            return queryFirstPage(accountId, limit);
-        }
-        return queryNextPage(accountId, beforeEntryId, limit);
+        List<AccountJournalEntryResult> fetchedEntries = beforeEntryId == null
+                ? queryFirstPage(accountId, limit + 1)
+                : queryNextPage(accountId, beforeEntryId, limit + 1);
+        boolean hasNext = fetchedEntries.size() > limit;
+        List<AccountJournalEntryResult> items = hasNext
+                ? fetchedEntries.subList(0, limit)
+                : fetchedEntries;
+        Long nextCursor = hasNext ? items.get(items.size() - 1).entryId() : null;
+        return new AccountJournalPageResult(List.copyOf(items), nextCursor, hasNext);
     }
 
     private List<AccountJournalEntryResult> queryFirstPage(Long accountId, int limit) {
@@ -80,6 +86,12 @@ public class AccountJournalQueryService {
 
     private static void validateLimit(int limit) {
         if (limit < 1 || limit > MAX_LIMIT) {
+            throw new InvalidPageRequestException();
+        }
+    }
+
+    private static void validateBeforeEntryId(Long beforeEntryId) {
+        if (beforeEntryId != null && beforeEntryId < 1) {
             throw new InvalidPageRequestException();
         }
     }

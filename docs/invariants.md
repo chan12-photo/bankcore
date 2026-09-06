@@ -10,6 +10,7 @@
 - A single requested money amount must not exceed `MoneyPolicy.MAX_AMOUNT`.
 - Stored account balance must not exceed `MoneyPolicy.MAX_BALANCE`.
 - MySQL CHECK constraints enforce the lower and upper account balance bounds.
+- MySQL CHECK constraints reject enum-like text values outside the Java domain enums.
 - Controlled seed funding must create journal evidence; direct balance mutation is allowed only in tests that intentionally prove reconciliation mismatch detection.
 - Application service methods must not expose non-journaled deposit or withdrawal paths.
 

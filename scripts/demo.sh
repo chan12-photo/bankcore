@@ -71,7 +71,8 @@ assert_journal_contains_transaction() {
 import json
 import sys
 
-entries = json.loads(sys.argv[1])
+page = json.loads(sys.argv[1])
+entries = page["items"]
 transaction_id = int(sys.argv[2])
 if not any(entry["transactionId"] == transaction_id for entry in entries):
     raise SystemExit(f"Journal did not include transaction {transaction_id}")

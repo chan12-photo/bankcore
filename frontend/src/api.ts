@@ -45,6 +45,12 @@ export type AccountJournalEntry = {
   createdAt: string
 }
 
+export type AccountJournalPage = {
+  items: AccountJournalEntry[]
+  nextCursor: number | null
+  hasNext: boolean
+}
+
 export type AccountBalanceMismatch = {
   accountId: number
   storedBalance: number
@@ -106,7 +112,7 @@ export async function postInternalTransfer(
 export async function fetchJournalEntries(
   accountId: number,
   limit = 10,
-): Promise<AccountJournalEntry[]> {
+): Promise<AccountJournalPage> {
   return requestJson(`/api/v1/accounts/${accountId}/journal-entries?limit=${limit}`)
 }
 

@@ -97,31 +97,39 @@ async function handleFetch(input: RequestInfo | URL, init?: RequestInit): Promis
   }
 
   if (url === '/api/v1/accounts/1/journal-entries?limit=10') {
-    return jsonResponse([
-      {
-        entryId: 101,
-        transactionId: transferResponse.transactionId,
-        entryNo: 1,
-        movementType: 'BALANCE_DECREASE',
-        amount: transferResponse.amount,
-        balanceAfter: transferResponse.sourceBalanceAfter,
-        createdAt: '2026-09-06T00:00:00Z',
-      },
-    ])
+    return jsonResponse({
+      items: [
+        {
+          entryId: 101,
+          transactionId: transferResponse.transactionId,
+          entryNo: 1,
+          movementType: 'BALANCE_DECREASE',
+          amount: transferResponse.amount,
+          balanceAfter: transferResponse.sourceBalanceAfter,
+          createdAt: '2026-09-06T00:00:00Z',
+        },
+      ],
+      nextCursor: null,
+      hasNext: false,
+    })
   }
 
   if (url === '/api/v1/accounts/2/journal-entries?limit=10') {
-    return jsonResponse([
-      {
-        entryId: 102,
-        transactionId: transferResponse.transactionId,
-        entryNo: 2,
-        movementType: 'BALANCE_INCREASE',
-        amount: transferResponse.amount,
-        balanceAfter: transferResponse.destinationBalanceAfter,
-        createdAt: '2026-09-06T00:00:01Z',
-      },
-    ])
+    return jsonResponse({
+      items: [
+        {
+          entryId: 102,
+          transactionId: transferResponse.transactionId,
+          entryNo: 2,
+          movementType: 'BALANCE_INCREASE',
+          amount: transferResponse.amount,
+          balanceAfter: transferResponse.destinationBalanceAfter,
+          createdAt: '2026-09-06T00:00:01Z',
+        },
+      ],
+      nextCursor: null,
+      hasNext: false,
+    })
   }
 
   if (url === '/api/v1/transfers/internal' && init?.method === 'POST') {

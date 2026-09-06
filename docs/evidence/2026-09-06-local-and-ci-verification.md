@@ -11,7 +11,7 @@ The checkpoint proves that the project is not only implemented, but also repeata
 - Backend tests pass against Testcontainers MySQL.
 - Frontend dependencies install from the lockfile.
 - Frontend lint, jsdom behavior tests, and production build pass.
-- Backend API demo proves idempotent transfer, replay, conflict handling, journal lookup, account reconciliation, and transaction journal reconciliation.
+- Backend API demo proves database-backed health readiness, idempotent transfer, replay, conflict handling, journal lookup, account reconciliation, and transaction journal reconciliation.
 - Frontend proxy demo proves the same backend evidence flow through the Vite `/api` proxy.
 - GitHub Actions runs the same backend, frontend, and frontend proxy demo checks on `main`.
 
@@ -60,7 +60,7 @@ Observed result:
 - Frontend lint completed successfully.
 - Frontend jsdom behavior test completed successfully.
 - Frontend production build completed successfully.
-- Backend demo completed successfully.
+- Backend demo completed successfully, including the database-backed health check.
 - Frontend proxy demo completed successfully.
 - Final wrapper output: `Local verification completed successfully.`
 

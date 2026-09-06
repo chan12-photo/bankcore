@@ -50,7 +50,7 @@ curl -s http://localhost:8080/api/v1/health
 Result:
 
 ```json
-{"status":"UP"}
+{"status":"UP","database":"UP"}
 ```
 
 ```bash
@@ -87,7 +87,7 @@ Result on the local development database after journaled flows:
 - The optimistic locking experiment leaves no reconciliation mismatches for the involved accounts after one transfer rolls back.
 - A test-only pessimistic write lock experiment serializes concurrent transfers on the source account row.
 - The pessimistic write lock experiment makes the second transfer observe the latest balance and roll back without reconciliation mismatches.
-- Account journal keyset pagination is available at `GET /api/v1/accounts/{accountId}/journal-entries`.
+- Account journal keyset pagination is available at `GET /api/v1/accounts/{accountId}/journal-entries` with `items`, `nextCursor`, and `hasNext`.
 - The account journal query is backed by `idx_account_journal_account_id_id(account_id, id)`.
 - Larger synthetic pagination evidence is captured in `docs/evidence/2026-09-04-journal-pagination-benchmark.md`.
 

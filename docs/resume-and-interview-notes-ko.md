@@ -11,7 +11,7 @@ Java/Spring Boot와 MySQL 기반 금융 이체 백엔드를 구현하며, 트랜
 - `caller_scope + operation + idempotency_key` 기반 멱등성 모델을 구현하고 원문 key 대신 scoped SHA-256 digest를 저장해 동일 요청 replay와 different-fingerprint conflict를 검증
 - no-lock, optimistic lock, pessimistic lock 동시성 실험을 구성하고, 실제 internal transfer에는 낮은 account id부터 순차 획득하는 ordered write lock을 적용해 deadlock 위험 완화를 Testcontainers MySQL에서 검증
 - stored balance와 journal-derived balance 비교 및 transaction journal invariant reconciliation을 구현하고, 직접 잔액 변조와 malformed journal 테스트로 mismatch 탐지 여부 검증
-- account journal 조회에 `(account_id, id)` 인덱스와 keyset pagination을 적용하고, 50,000건 synthetic journal 기준 offset pagination 대비 접근 패턴과 `EXPLAIN ANALYZE` 결과 문서화
+- account journal 조회에 `(account_id, id)` 인덱스와 `nextCursor` 기반 keyset pagination을 적용하고, 50,000건 synthetic journal 기준 offset pagination 대비 접근 패턴과 `EXPLAIN ANALYZE` 결과 문서화
 - React/TypeScript/Vite/TanStack Query 기반 Lab Console을 구현해 demo account, idempotent transfer replay, conflict probe, journal, reconciliation 흐름을 한 화면에서 시연
 - `scripts/demo-frontend.sh`와 GitHub Actions CI를 구성해 backend test, frontend lint/build, frontend `/api` proxy 기반 demo flow를 자동 검증
 

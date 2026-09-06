@@ -42,6 +42,12 @@ Health check:
 curl http://localhost:8080/api/v1/health
 ```
 
+Healthy response:
+
+```json
+{"status":"UP","database":"UP"}
+```
+
 ## Quick Demo
 
 Use the `demo` profile when you want a clean portfolio walkthrough with two pre-funded synthetic accounts.
@@ -228,7 +234,27 @@ Read recent account journal entries with keyset pagination:
 
 ```bash
 curl "http://localhost:8080/api/v1/accounts/1/journal-entries?limit=20"
-curl "http://localhost:8080/api/v1/accounts/1/journal-entries?beforeEntryId=100&limit=20"
+curl "http://localhost:8080/api/v1/accounts/1/journal-entries?beforeEntryId=<nextCursor>&limit=20"
+```
+
+The response is intentionally cursor-shaped so the next request does not need offset scanning:
+
+```json
+{
+  "items": [
+    {
+      "entryId": 123,
+      "transactionId": 45,
+      "entryNo": 1,
+      "movementType": "BALANCE_DECREASE",
+      "amount": 1000,
+      "balanceAfter": 99000,
+      "createdAt": "2026-09-06T00:00:00Z"
+    }
+  ],
+  "nextCursor": 123,
+  "hasNext": true
+}
 ```
 
 ## API Documentation

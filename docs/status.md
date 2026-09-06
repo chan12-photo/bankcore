@@ -7,7 +7,7 @@ Status date: 2026-09-06
 Completed:
 
 - Spring Boot application boots.
-- Health API is implemented and tested.
+- Health API verifies database readiness with a `SELECT 1` probe and returns `503` when the database is unavailable.
 - Docker Compose starts MySQL 8.4.
 - Flyway creates the initial `customer` and `account` tables.
 - Hibernate validates schema instead of creating or updating it.
@@ -50,7 +50,8 @@ Completed:
 - Request DTOs use Bean Validation for required fields and positive transfer amounts.
 - Request DTO validation now also mirrors key database limits for customer names, account numbers, account ids, and transfer amounts.
 - Customer and account services also validate length limits before repository/database use.
-- Account journal keyset pagination API is implemented.
+- Database check constraints enforce account status, transaction type, journal movement type, idempotency operation, and idempotency status enum values.
+- Account journal keyset pagination API returns `items`, `nextCursor`, and `hasNext`.
 - Flyway creates `idx_account_journal_account_id_id(account_id, id)` for account journal lookup.
 - Local SQL evidence confirms the journal pagination index is present and usable.
 - Synthetic 50,000-row journal pagination benchmark compares keyset pagination with offset pagination and the seed script includes both query shapes.

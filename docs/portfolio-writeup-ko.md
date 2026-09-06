@@ -20,7 +20,7 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 - 이체 성공 시 `financial_transaction` 1건과 `account_journal_entry` 2건을 기록합니다.
 - 실패 시 잔액, 거래, journal, idempotency 기록이 함께 롤백되어야 합니다.
 - reconciliation API는 저장된 계좌 잔액과 journal 기반 계산 잔액을 비교하고, 거래별 journal 구조가 기대한 불변조건을 만족하는지도 별도로 검사합니다.
-- 계좌 journal 조회는 offset pagination 대신 keyset pagination으로 구현했습니다.
+- 계좌 journal 조회는 offset pagination 대신 `items`, `nextCursor`, `hasNext`를 반환하는 keyset pagination으로 구현했습니다.
 - demo profile은 반복 실행 시 Alice/Bob 계좌를 기준 잔액으로 journaled 방식 재정렬합니다.
 - React Lab Console은 Vite proxy와 TanStack Query를 사용해 backend evidence flow를 시각적으로 실행합니다.
 
@@ -48,7 +48,7 @@ BankCore는 Java/Spring Boot와 MySQL InnoDB를 사용해 금융 이체에서 �
 
 ### SQL
 
-`account_journal_entry(account_id, id)` 인덱스를 추가하고, journal 조회를 `WHERE account_id = ? AND id < ? ORDER BY id DESC LIMIT ?` 형태의 keyset pagination으로 구현했습니다. 로컬 MySQL에서 인덱스 존재와 사용 가능한 `EXPLAIN` 결과를 evidence 문서에 기록했습니다.
+`account_journal_entry(account_id, id)` 인덱스를 추가하고, journal 조회를 `WHERE account_id = ? AND id < ? ORDER BY id DESC LIMIT ?` 형태의 keyset pagination으로 구현했습니다. 응답에는 `items`, `nextCursor`, `hasNext`를 포함해 다음 페이지 요청이 명확하게 이어지도록 했고, 로컬 MySQL에서 인덱스 존재와 사용 가능한 `EXPLAIN` 결과를 evidence 문서에 기록했습니다.
 
 ### Lab Console
 
