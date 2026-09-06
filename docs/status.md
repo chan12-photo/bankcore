@@ -8,7 +8,8 @@ Completed:
 
 - Spring Boot application boots.
 - Health API verifies database readiness with a `SELECT 1` probe and returns `503` when the database is unavailable.
-- Docker Compose starts MySQL 8.4.
+- Docker Compose starts MySQL 8.4 bound to `127.0.0.1`.
+- Datasource settings and server bind address can be overridden with `BANKCORE_DATASOURCE_*` and `BANKCORE_SERVER_ADDRESS`.
 - Flyway creates the initial `customer` and `account` tables.
 - Hibernate validates schema instead of creating or updating it.
 - Open Session in View is disabled for clearer service transaction boundaries.

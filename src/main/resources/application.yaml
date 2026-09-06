@@ -2,10 +2,12 @@ spring:
   application:
     name: bankcore
   datasource:
-    url: jdbc:mysql://localhost:3306/bankcore
-    username: bankcore
-    password: bankcore_password
+    url: ${BANKCORE_DATASOURCE_URL:jdbc:mysql://localhost:3306/bankcore}
+    username: ${BANKCORE_DATASOURCE_USERNAME:bankcore}
+    password: ${BANKCORE_DATASOURCE_PASSWORD:bankcore_password}
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+server:
+  address: ${BANKCORE_SERVER_ADDRESS:127.0.0.1}

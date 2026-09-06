@@ -63,25 +63,26 @@ print(alice["accountId"], bob["accountId"])
 PY
 }
 
-extract_transaction_id() {
-  python3 - "$1" <<'PY'
-import json
-import sys
-
-print(json.loads(sys.argv[1])["transactionId"])
-PY
-}
-
-assert_journal_contains_transaction() {
-  python3 - "$1" "$2" <<'PY'
+assert_journal_contains_transfer_entry() {
+  python3 - "$1" "$2" "$3" "$4" "$5" <<'PY'
 import json
 import sys
 
 page = json.loads(sys.argv[1])
 entries = page["items"]
-transaction_id = int(sys.argv[2])
-if not any(entry["transactionId"] == transaction_id for entry in entries):
-    raise SystemExit(f"Journal did not include transaction {transaction_id}")
+transfer = json.loads(sys.argv[2])
+entry_no = int(sys.argv[3])
+movement_type = sys.argv[4]
+balance_field = sys.argv[5]
+expected = {
+    "transactionId": transfer["transactionId"],
+    "entryNo": entry_no,
+    "movementType": movement_type,
+    "amount": transfer["amount"],
+    "balanceAfter": transfer[balance_field],
+}
+if not any(all(entry[key] == value for key, value in expected.items()) for entry in entries):
+    raise SystemExit(f"Journal did not include expected transfer entry: {expected}")
 PY
 }
 
@@ -93,6 +94,18 @@ import sys
 payload = json.loads(sys.argv[1])
 if payload.get("code") != "IDEMPOTENCY_KEY_CONFLICT":
     raise SystemExit(f"Expected IDEMPOTENCY_KEY_CONFLICT, got {payload}")
+PY
+}
+
+assert_empty_json_array() {
+  python3 - "$1" "$2" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+label = sys.argv[2]
+if payload != []:
+    raise SystemExit(f"Expected no {label}, got {payload}")
 PY
 }
 
@@ -202,20 +215,28 @@ if [[ "${CONFLICT_STATUS}" != "409" ]]; then
 fi
 assert_idempotency_conflict "${CONFLICT_RESPONSE}"
 
-TRANSACTION_ID="$(extract_transaction_id "${FIRST_RESPONSE}")"
-
 echo
 echo "Source account journal through frontend proxy:"
 SOURCE_JOURNAL="$(curl -fsS "${FRONTEND_URL}/api/v1/accounts/${SOURCE_ACCOUNT_ID}/journal-entries?limit=10")"
 echo "${SOURCE_JOURNAL}"
-assert_journal_contains_transaction "${SOURCE_JOURNAL}" "${TRANSACTION_ID}"
+assert_journal_contains_transfer_entry \
+  "${SOURCE_JOURNAL}" \
+  "${FIRST_RESPONSE}" \
+  1 \
+  "BALANCE_DECREASE" \
+  "sourceBalanceAfter"
 echo
 
 echo
 echo "Destination account journal through frontend proxy:"
 DESTINATION_JOURNAL="$(curl -fsS "${FRONTEND_URL}/api/v1/accounts/${DESTINATION_ACCOUNT_ID}/journal-entries?limit=10")"
 echo "${DESTINATION_JOURNAL}"
-assert_journal_contains_transaction "${DESTINATION_JOURNAL}" "${TRANSACTION_ID}"
+assert_journal_contains_transfer_entry \
+  "${DESTINATION_JOURNAL}" \
+  "${FIRST_RESPONSE}" \
+  2 \
+  "BALANCE_INCREASE" \
+  "destinationBalanceAfter"
 echo
 
 echo
@@ -224,10 +245,7 @@ MISMATCHES="$(curl -fsS "${FRONTEND_URL}/api/v1/reconciliation/account-balances/
 echo "${MISMATCHES}"
 echo
 
-if [[ "${MISMATCHES}" != "[]" ]]; then
-  echo "Expected no reconciliation mismatches." >&2
-  exit 1
-fi
+assert_empty_json_array "${MISMATCHES}" "reconciliation mismatches"
 
 echo
 echo "Transaction journal mismatches through frontend proxy:"
@@ -235,10 +253,7 @@ TRANSACTION_MISMATCHES="$(curl -fsS "${FRONTEND_URL}/api/v1/reconciliation/trans
 echo "${TRANSACTION_MISMATCHES}"
 echo
 
-if [[ "${TRANSACTION_MISMATCHES}" != "[]" ]]; then
-  echo "Expected no transaction journal mismatches." >&2
-  exit 1
-fi
+assert_empty_json_array "${TRANSACTION_MISMATCHES}" "transaction journal mismatches"
 
 echo
 echo "Frontend demo completed successfully."

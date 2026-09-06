@@ -36,6 +36,15 @@ docker compose up -d
 ./gradlew bootRun
 ```
 
+Local defaults bind MySQL and the Spring Boot server to `127.0.0.1`. Override these only when you intentionally need a different local setup:
+
+```text
+BANKCORE_SERVER_ADDRESS=127.0.0.1
+BANKCORE_DATASOURCE_URL=jdbc:mysql://localhost:3306/bankcore
+BANKCORE_DATASOURCE_USERNAME=bankcore
+BANKCORE_DATASOURCE_PASSWORD=bankcore_password
+```
+
 Health check:
 
 ```bash

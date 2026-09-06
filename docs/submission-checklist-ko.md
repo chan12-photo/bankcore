@@ -43,6 +43,7 @@ npm run build
 - Full local verification script: `Local verification completed successfully.`
 - Submission archive script: `build/BankCore-portfolio-<commit>.zip` 생성
 - Reconciliation response: `[]`
+- 로컬 기본 설정: MySQL과 Spring Boot 서버는 `127.0.0.1`에 바인딩
 - Frontend lint: 오류 없음
 - Frontend test: React Lab Console DOM 테스트 성공
 - Frontend build: Vite production build 성공
