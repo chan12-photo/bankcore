@@ -46,7 +46,7 @@ describe('BankCore Lab Console', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run transfer' }))
 
     expect(await screen.findByText('#9001')).toBeTruthy()
-    expect(await screen.findByText('Debit and credit journal rows match the captured transfer invariant.'))
+    expect(await screen.findByText('Debit, credit, and balance-after journal rows match the captured transfer invariant.'))
       .toBeTruthy()
     expect(screen.getByText('Account balances and transaction journals both reconcile.')).toBeTruthy()
 
@@ -81,13 +81,34 @@ describe('BankCore Lab Console', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry preserved request' }))
 
     expect(await screen.findByText('#9001')).toBeTruthy()
-    expect(await screen.findByText('Preserved idempotency key recovered a committed transfer response.'))
+    expect(await screen.findByText('Preserved idempotency key returned a definitive transfer response.'))
       .toBeTruthy()
-    expect(
-      fetchMock.mock.calls.filter(([input, init]) =>
-        String(input) === '/api/v1/transfers/internal' && init?.method === 'POST',
-      ),
-    ).toHaveLength(2)
+    const transferCalls = fetchMock.mock.calls.filter(([input, init]) =>
+      String(input) === '/api/v1/transfers/internal' && init?.method === 'POST',
+    )
+    expect(transferCalls).toHaveLength(2)
+    expect(readHeader(transferCalls[1][1]?.headers, 'Idempotency-Key')).toBe(
+      readHeader(transferCalls[0][1]?.headers, 'Idempotency-Key'),
+    )
+    expect(readHeader(transferCalls[1][1]?.headers, 'X-Caller-Scope')).toBe(
+      readHeader(transferCalls[0][1]?.headers, 'X-Caller-Scope'),
+    )
+    expect(JSON.parse(String(transferCalls[1][1]?.body))).toEqual(
+      JSON.parse(String(transferCalls[0][1]?.body)),
+    )
+  })
+
+  it('rejects journal proof when a balance-after snapshot differs from the transfer response', async () => {
+    vi.stubGlobal('fetch', vi.fn(createJournalBalanceMismatchFetchHandler()))
+
+    renderApp()
+
+    expect(await screen.findByText('Alice Demo')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run transfer' }))
+
+    expect(await screen.findByText('#9001')).toBeTruthy()
+    expect(await screen.findByText(/balance-after snapshot did not match/)).toBeTruthy()
   })
 })
 
@@ -190,6 +211,39 @@ function createLostFirstTransferFetchHandler() {
 
     return handleFetch(input, init)
   }
+}
+
+function createJournalBalanceMismatchFetchHandler() {
+  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = String(input)
+    if (url === '/api/v1/accounts/1/journal-entries?limit=10') {
+      return jsonResponse({
+        items: [
+          {
+            entryId: 101,
+            transactionId: transferResponse.transactionId,
+            entryNo: 1,
+            movementType: 'BALANCE_DECREASE',
+            amount: transferResponse.amount,
+            balanceAfter: transferResponse.sourceBalanceAfter + 1,
+            createdAt: '2026-09-06T00:00:00Z',
+          },
+        ],
+        nextCursor: null,
+        hasNext: false,
+      })
+    }
+
+    return handleFetch(input, init)
+  }
+}
+
+function readHeader(headers: HeadersInit | undefined, name: string): string | null {
+  if (headers === undefined) {
+    return null
+  }
+
+  return new Headers(headers).get(name)
 }
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {

@@ -58,6 +58,8 @@ npm run build
 - `docs/evidence/2026-09-04-core-behavior.md`: 핵심 동작 검증 근거
 - `docs/evidence/2026-09-04-journal-pagination-benchmark.md`: keyset pagination SQL 근거
 - `docs/evidence/2026-09-06-local-and-ci-verification.md`: 최신 로컬 검증과 GitHub Actions 성공 근거
+- `docs/evidence/2026-09-07-review-hardening.md`: 외부 리뷰 기반 hardening 근거
+- `docs/evidence/2026-09-07-review-followup.md`: 리뷰 follow-up 테스트와 UI proof 보강 근거
 - `docs/portfolio-writeup-ko.md`: 포트폴리오 설명문
 - `docs/resume-and-interview-notes-ko.md`: 이력서/면접 답변용 요약
 - `docs/adr/`: 설계 결정 기록
@@ -75,6 +77,8 @@ npm run build
 - 이체 성공 시 `financial_transaction` 1건과 `account_journal_entry` 2건이 함께 기록됩니다.
 - 출금 직후 또는 journal flush 이후 예외가 발생해도 잔액, 거래, journal, idempotency row가 함께 rollback됩니다.
 - 같은 idempotency key와 같은 request fingerprint는 같은 결과를 replay하고, 다른 fingerprint 재사용은 conflict로 거부합니다.
+- 실패 주입으로 journal flush 이후 예외가 발생해도 같은 idempotency key와 같은 본문으로 다시 시도하면 롤백된 상태에서 정상 커밋됩니다.
+- 같은 idempotency key의 replay는 이후 추가 이체가 발생해도 원래 이체의 balance snapshot을 반환합니다.
 - 동시 same-key 요청 50개가 들어와도 money effect는 한 번만 발생하는 것을 Testcontainers MySQL 통합 테스트로 검증했습니다.
 - 동시 same-key different-fingerprint 요청은 하나만 성공하고 하나는 conflict가 되는 것을 검증했습니다.
 - demo profile은 반복 실행 시 Alice/Bob 계좌를 journaled 방식으로 기준 잔액에 재정렬하므로 walkthrough 시작값이 예측 가능합니다.
@@ -85,6 +89,8 @@ npm run build
 - account journal 조회는 `(account_id, id)` 인덱스와 keyset pagination으로 구현했고, 50,000건 synthetic benchmark evidence를 남겼습니다.
 - OpenAPI JSON과 Swagger UI를 제공하고, core API path가 문서화되는지 테스트합니다.
 - React/TypeScript Lab Console로 demo account, idempotent transfer, replay, conflict, journal, reconciliation 흐름을 한 화면에서 시연할 수 있습니다.
+- Lab Console은 journal proof에서 debit/credit row뿐 아니라 응답의 `sourceBalanceAfter`, `destinationBalanceAfter`와 journal `balanceAfter` snapshot도 비교합니다.
+- Lab Console lost-response retry 테스트는 같은 idempotency key, caller scope, request body가 보존되는지 확인합니다.
 - `scripts/demo-frontend.sh`로 브라우저 수동 조작 없이도 frontend `/api` proxy를 거친 핵심 흐름을 검증할 수 있습니다.
 - `scripts/verify-local.sh` 하나로 backend test, frontend lint/build, backend demo, frontend proxy demo를 한 번에 확인할 수 있습니다.
 
@@ -98,7 +104,7 @@ npm run build
 ## 남겨둔 확장 과제
 
 - production-style scope로 확장할 경우 authentication/authorization 추가
-- optimistic lock conflict에 대한 bounded retry 정책 추가
+- retry backoff, jitter, deadline, metrics 같은 production-grade 재시도 관측성 추가
 - 운영용 secrets 분리와 profile별 설정 강화
 - OpenAPI annotation 세부 보강
 - Lab Console 시연 영상 또는 스크린샷 추가

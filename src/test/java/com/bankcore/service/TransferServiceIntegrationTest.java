@@ -221,6 +221,91 @@ class TransferServiceIntegrationTest {
     }
 
     @Test
+    void transferInternalIdempotent_shouldAllowSameKeyRetryAfterFaultRollback() {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+        String idempotencyKey = nextIdempotencyKey();
+        long transactionCountBefore = financialTransactionRepository.count();
+        long journalCountBefore = accountJournalEntryRepository.count();
+        long idempotencyCountBefore = idempotencyRecordRepository.count();
+
+        assertThatThrownBy(() -> transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L,
+                TransferFailurePoint.AFTER_JOURNAL_FLUSH
+        )).isInstanceOf(TransferFaultInjectedException.class);
+
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(10_000L);
+        assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance()).isEqualTo(2_000L);
+        assertThat(financialTransactionRepository.count()).isEqualTo(transactionCountBefore);
+        assertThat(accountJournalEntryRepository.count()).isEqualTo(journalCountBefore);
+        assertThat(idempotencyRecordRepository.count()).isEqualTo(idempotencyCountBefore);
+
+        InternalTransferResult retriedResult = transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L
+        );
+
+        assertThat(retriedResult.sourceBalanceAfter()).isEqualTo(7_000L);
+        assertThat(retriedResult.destinationBalanceAfter()).isEqualTo(5_000L);
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(7_000L);
+        assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance()).isEqualTo(5_000L);
+        assertThat(financialTransactionRepository.count()).isEqualTo(transactionCountBefore + 1);
+        assertThat(accountJournalEntryRepository.count()).isEqualTo(journalCountBefore + 2);
+        assertThat(idempotencyRecordRepository.count()).isEqualTo(idempotencyCountBefore + 1);
+    }
+
+    @Test
+    void transferInternalIdempotent_shouldReplayOriginalBalanceSnapshotAfterLaterTransfers() {
+        Account sourceAccount = createAccountWithBalance(20_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+        String firstIdempotencyKey = nextIdempotencyKey();
+        String secondIdempotencyKey = nextIdempotencyKey();
+        long transactionCountBefore = financialTransactionRepository.count();
+        long journalCountBefore = accountJournalEntryRepository.count();
+        long idempotencyCountBefore = idempotencyRecordRepository.count();
+
+        InternalTransferResult firstResult = transferService.transferInternalIdempotent(
+                "integration-test",
+                firstIdempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L
+        );
+        InternalTransferResult laterResult = transferService.transferInternalIdempotent(
+                "integration-test",
+                secondIdempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                2_000L
+        );
+        InternalTransferResult replayedFirstResult = transferService.transferInternalIdempotent(
+                "integration-test",
+                firstIdempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L
+        );
+
+        assertThat(firstResult.sourceBalanceAfter()).isEqualTo(17_000L);
+        assertThat(firstResult.destinationBalanceAfter()).isEqualTo(5_000L);
+        assertThat(laterResult.sourceBalanceAfter()).isEqualTo(15_000L);
+        assertThat(laterResult.destinationBalanceAfter()).isEqualTo(7_000L);
+        assertThat(replayedFirstResult).isEqualTo(firstResult);
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(15_000L);
+        assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance()).isEqualTo(7_000L);
+        assertThat(financialTransactionRepository.count()).isEqualTo(transactionCountBefore + 2);
+        assertThat(accountJournalEntryRepository.count()).isEqualTo(journalCountBefore + 4);
+        assertThat(idempotencyRecordRepository.count()).isEqualTo(idempotencyCountBefore + 2);
+    }
+
+    @Test
     void transferInternalIdempotent_shouldApplyMoneyEffectOnce_whenSameRequestArrivesConcurrently()
             throws Exception {
         Account sourceAccount = createAccountWithBalance(10_000L);
@@ -412,6 +497,36 @@ class TransferServiceIntegrationTest {
 
         assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(7_000L);
         assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance()).isEqualTo(5_000L);
+    }
+
+    @Test
+    void transferInternalIdempotent_shouldRejectSameKeyWithDifferentDestinationAccount() {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account firstDestinationAccount = createAccountWithBalance(2_000L);
+        Account secondDestinationAccount = createAccountWithBalance(1_000L);
+        String idempotencyKey = nextIdempotencyKey();
+
+        transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                firstDestinationAccount.getId(),
+                3_000L
+        );
+
+        assertThatThrownBy(() -> transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                secondDestinationAccount.getId(),
+                3_000L
+        )).isInstanceOf(IdempotencyKeyConflictException.class);
+
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance()).isEqualTo(7_000L);
+        assertThat(accountRepository.findById(firstDestinationAccount.getId()).orElseThrow().getBalance())
+                .isEqualTo(5_000L);
+        assertThat(accountRepository.findById(secondDestinationAccount.getId()).orElseThrow().getBalance())
+                .isEqualTo(1_000L);
     }
 
     @Test

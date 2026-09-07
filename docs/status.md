@@ -43,10 +43,12 @@ Completed:
 - Reconciliation API reports mismatched accounts for evidence and diagnostics.
 - Transaction journal reconciliation service detects malformed transaction journal structures, including missing entries, wrong movement directions, same-account transfer pairs, amount mismatches, and invalid `balance_after` snapshots.
 - Reconciliation API reports transaction journal mismatches separately from account balance mismatches.
+- Idempotent transfer replay validates `balance_after` snapshots with a transaction-scoped account-history query instead of scanning unrelated account journals.
 - Test-only unsafe no-lock race experiment demonstrates stale-balance overwrite and reconciliation mismatch.
 - Test-only optimistic locking race experiment demonstrates one successful transfer, one optimistic-lock rollback, and no reconciliation mismatch.
 - Transient concurrency failures are retried with a bounded idempotent-transfer retry policy, then mapped to a stable `409 CONFLICT` API response if still unresolved.
 - Test-only pessimistic write lock race experiment demonstrates row-level serialization, an insufficient-balance rollback on the loser, and no reconciliation mismatch.
+- The pessimistic write lock test now proves the second transfer reaches the source-lock attempt while the first transaction still holds the row lock.
 - Transfer API returns stable `ApiErrorResponse` bodies for missing headers, malformed request bodies, and non-numeric path/query parameters.
 - JSON integer ids and money amounts reject floating-point input instead of truncating it.
 - Request DTOs use Bean Validation for required fields and positive transfer amounts.
@@ -68,6 +70,8 @@ Completed:
 - React/TypeScript/Vite BankCore Lab Console is implemented under `frontend/`.
 - The lab console uses TanStack Query to load demo accounts, run idempotent internal transfers, replay the same request, recover a preserved request after a lost first response, probe same-key changed-body conflicts, show journal rows, and show reconciliation status.
 - The lab console checks both account balance mismatches and transaction journal mismatches.
+- The lab console journal proof compares debit and credit journal rows against the transfer response, including `balanceAfter` snapshots.
+- The lab console lost-response test verifies the retry preserves the same idempotency key, caller scope, and request body.
 - Vite dev proxy forwards local `/api` calls to the Spring Boot backend on `http://localhost:8080`.
 - Frontend lint, production build, and the frontend proxy demo are covered locally and in GitHub Actions CI.
 - Frontend jsdom behavior testing is covered with Vitest and React Testing Library.
@@ -77,6 +81,8 @@ Completed:
 - Hardening evidence is captured in `docs/evidence/2026-09-05-hardening.md`.
 - Frontend lab console evidence is captured in `docs/evidence/2026-09-05-frontend-lab-console.md`.
 - Final local and CI verification evidence is captured in `docs/evidence/2026-09-06-local-and-ci-verification.md`.
+- External review hardening evidence is captured in `docs/evidence/2026-09-07-review-hardening.md`.
+- External review follow-up evidence is captured in `docs/evidence/2026-09-07-review-followup.md`.
 - Korean submission checklist is captured in `docs/submission-checklist-ko.md`.
 - Korean portfolio write-up is captured in `docs/portfolio-writeup-ko.md`.
 - Korean resume and interview notes are captured in `docs/resume-and-interview-notes-ko.md`.

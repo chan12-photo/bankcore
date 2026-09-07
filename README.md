@@ -179,7 +179,7 @@ Open:
 http://localhost:5173
 ```
 
-The console uses Vite's local `/api` proxy to call `http://localhost:8080` by default. It demonstrates demo account loading, internal transfer, same-request idempotent replay, same-key changed-body conflict, journal rows, account balance reconciliation, and transaction journal reconciliation on one screen. If the first transfer response is lost after the server commits, the console preserves the idempotency key and request body so the same request can recover the committed response.
+The console uses Vite's local `/api` proxy to call `http://localhost:8080` by default. It demonstrates demo account loading, internal transfer, same-request idempotent replay, same-key changed-body conflict, journal rows, account balance reconciliation, and transaction journal reconciliation on one screen. Its journal proof checks the debit row, credit row, amounts, and captured `balanceAfter` snapshots. If the first transfer response is lost, the console preserves the idempotency key and request body so the same request can get the definitive transfer response.
 
 You can also verify the frontend server and API proxy without manual browser clicks:
 
@@ -295,6 +295,7 @@ http://localhost:8080/v3/api-docs
 - [docs/evidence/2026-09-05-frontend-lab-console.md](docs/evidence/2026-09-05-frontend-lab-console.md)
 - [docs/evidence/2026-09-06-local-and-ci-verification.md](docs/evidence/2026-09-06-local-and-ci-verification.md)
 - [docs/evidence/2026-09-07-review-hardening.md](docs/evidence/2026-09-07-review-hardening.md)
+- [docs/evidence/2026-09-07-review-followup.md](docs/evidence/2026-09-07-review-followup.md)
 - [docs/submission-checklist-ko.md](docs/submission-checklist-ko.md)
 - [docs/portfolio-writeup-ko.md](docs/portfolio-writeup-ko.md)
 - [docs/resume-and-interview-notes-ko.md](docs/resume-and-interview-notes-ko.md)

@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,6 +69,7 @@ class PessimisticLockTransferConcurrencyTest {
         controlledFundingService.seedFunds(sourceAccount.getId(), 10_000L);
         CountDownLatch firstTransactionLockedSource = new CountDownLatch(1);
         CountDownLatch allowFirstTransactionToCommit = new CountDownLatch(1);
+        CountDownLatch secondTransactionAboutToLockSource = new CountDownLatch(1);
         PessimisticTransferExperiment pessimisticTransfer = new PessimisticTransferExperiment(
                 transactionManager,
                 accountRepository,
@@ -92,8 +94,11 @@ class PessimisticLockTransferConcurrencyTest {
             Future<TransferAttempt> secondFuture = executorService.submit(() -> pessimisticTransfer.transfer(
                     sourceAccount.getId(),
                     secondDestinationAccount.getId(),
-                    6_000L
+                    6_000L,
+                    secondTransactionAboutToLockSource
             ));
+            assertThat(secondTransactionAboutToLockSource.await(5, TimeUnit.SECONDS)).isTrue();
+            assertFutureStillWaiting(secondFuture);
 
             allowFirstTransactionToCommit.countDown();
             firstAttempt = firstFuture.get(10, TimeUnit.SECONDS);
@@ -148,7 +153,16 @@ class PessimisticLockTransferConcurrencyTest {
         }
 
         private TransferAttempt transfer(Long sourceAccountId, Long destinationAccountId, long amount) {
-            return transfer(sourceAccountId, destinationAccountId, amount, null, null);
+            return transfer(sourceAccountId, destinationAccountId, amount, null, null, null);
+        }
+
+        private TransferAttempt transfer(
+                Long sourceAccountId,
+                Long destinationAccountId,
+                long amount,
+                CountDownLatch beforeSourceLock
+        ) {
+            return transfer(sourceAccountId, destinationAccountId, amount, beforeSourceLock, null, null);
         }
 
         private TransferAttempt transfer(
@@ -158,11 +172,23 @@ class PessimisticLockTransferConcurrencyTest {
                 CountDownLatch sourceLocked,
                 CountDownLatch continueAfterSourceLock
         ) {
+            return transfer(sourceAccountId, destinationAccountId, amount, null, sourceLocked, continueAfterSourceLock);
+        }
+
+        private TransferAttempt transfer(
+                Long sourceAccountId,
+                Long destinationAccountId,
+                long amount,
+                CountDownLatch beforeSourceLock,
+                CountDownLatch sourceLocked,
+                CountDownLatch continueAfterSourceLock
+        ) {
             try {
                 transactionTemplate.executeWithoutResult(status -> transferInsideTransaction(
                         sourceAccountId,
                         destinationAccountId,
                         amount,
+                        beforeSourceLock,
                         sourceLocked,
                         continueAfterSourceLock
                 ));
@@ -176,9 +202,11 @@ class PessimisticLockTransferConcurrencyTest {
                 Long sourceAccountId,
                 Long destinationAccountId,
                 long amount,
+                CountDownLatch beforeSourceLock,
                 CountDownLatch sourceLocked,
                 CountDownLatch continueAfterSourceLock
         ) {
+            signalIfRequested(beforeSourceLock);
             Account sourceAccount = lockAccount(sourceAccountId);
             signalAndWaitIfRequested(sourceLocked, continueAfterSourceLock);
             Account destinationAccount = lockAccount(destinationAccountId);
@@ -213,6 +241,12 @@ class PessimisticLockTransferConcurrencyTest {
                     .orElseThrow(() -> new AccountNotFoundException(accountId));
         }
 
+        private void signalIfRequested(CountDownLatch latch) {
+            if (latch != null) {
+                latch.countDown();
+            }
+        }
+
         private void signalAndWaitIfRequested(CountDownLatch sourceLocked, CountDownLatch continueAfterSourceLock) {
             if (sourceLocked == null || continueAfterSourceLock == null) {
                 return;
@@ -226,6 +260,17 @@ class PessimisticLockTransferConcurrencyTest {
                 Thread.currentThread().interrupt();
                 throw new IllegalStateException("Interrupted while holding pessimistic source lock.", exception);
             }
+        }
+    }
+
+    private static void assertFutureStillWaiting(Future<TransferAttempt> future) {
+        try {
+            future.get(250, TimeUnit.MILLISECONDS);
+            throw new AssertionError("Second transfer completed while the first transaction still held the source lock.");
+        } catch (TimeoutException expected) {
+            // Expected: the second transfer is waiting on the first transaction's row lock.
+        } catch (Exception exception) {
+            throw new AssertionError("Second transfer failed before lock serialization could be verified.", exception);
         }
     }
 }

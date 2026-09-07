@@ -51,7 +51,7 @@ For the full repository check, run:
 2. Run `POST /api/v1/transfers/internal` with `X-Caller-Scope` and `Idempotency-Key`.
 3. Replay the exact same request and confirm the response matches the first response.
 4. Reuse the same key with a changed amount and confirm the expected HTTP 409 conflict.
-5. Read both transfer-side journal rows.
+5. Read both transfer-side journal rows and confirm their `balanceAfter` snapshots match the transfer response.
 6. Confirm account balance reconciliation returns no mismatches.
 7. Confirm transaction journal reconciliation returns no mismatches.
 
@@ -78,4 +78,4 @@ npm run test
 npm run build
 ```
 
-`npm run test` uses Vitest with a jsdom DOM environment to verify the Lab Console transfer, replay, conflict, journal proof, and reconciliation evidence flow with mocked backend responses.
+`npm run test` uses Vitest with a jsdom DOM environment to verify the Lab Console transfer, replay, conflict, journal proof, lost-response retry preservation, balance-after mismatch detection, and reconciliation evidence flow with mocked backend responses.

@@ -473,7 +473,7 @@ function App() {
               <div className="empty-state">
                 {firstOperation === null
                   ? 'Run a transfer to capture the first transaction response.'
-                  : 'The request and idempotency key are preserved. If the server committed before the response was lost, retry the same request to recover the committed response.'}
+                  : 'The request and idempotency key are preserved. Retry the same request to get the definitive transfer response.'}
               </div>
               {firstOperation !== null && (
                 <button className="secondary-action" type="button" onClick={handleReplay} disabled={!canRecover}>
@@ -703,7 +703,7 @@ function ReplayStatus({ replayCheck }: { replayCheck: ReplayCheck | null }) {
   return (
     <div className={`proof-strip ${replayCheck.identical === false ? 'is-bad' : 'is-good'}`}>
       {replayCheck.identical === null
-        ? 'Preserved idempotency key recovered a committed transfer response.'
+        ? 'Preserved idempotency key returned a definitive transfer response.'
         : replayCheck.identical
         ? 'Replay response matches the original transfer response.'
         : 'Replay response differed from the original response.'}
@@ -816,26 +816,29 @@ function evaluateJournalProof(
       row.accountId === response.sourceAccountId &&
       row.entryNo === 1 &&
       row.movementType === 'BALANCE_DECREASE' &&
-      row.amount === response.amount,
+      row.amount === response.amount &&
+      row.balanceAfter === response.sourceBalanceAfter,
   )
   const destinationRow = rows.find(
     (row) =>
       row.accountId === response.destinationAccountId &&
       row.entryNo === 2 &&
       row.movementType === 'BALANCE_INCREASE' &&
-      row.amount === response.amount,
+      row.amount === response.amount &&
+      row.balanceAfter === response.destinationBalanceAfter,
   )
 
   if (sourceRow === undefined || destinationRow === undefined) {
     return {
       ready: false,
-      message: 'Journal rows were found, but their account, movement, entry number, or amount did not match.',
+      message:
+        'Journal rows were found, but their account, movement, entry number, amount, or balance-after snapshot did not match.',
     }
   }
 
   return {
     ready: true,
-    message: 'Debit and credit journal rows match the captured transfer invariant.',
+    message: 'Debit, credit, and balance-after journal rows match the captured transfer invariant.',
   }
 }
 
