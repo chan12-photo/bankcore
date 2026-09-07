@@ -66,6 +66,26 @@ Frontend proxy demo: Frontend demo completed successfully.
 Local verification completed successfully.
 ```
 
+## CI Verification
+
+The follow-up implementation commit was pushed to `main` and verified by GitHub Actions.
+
+```text
+Commit: 4c333e57882d3251b7a4eb93224b87e93f4394d4
+Workflow: CI
+Run: https://github.com/chan12-photo/bankcore/actions/runs/34133366077
+Conclusion: success
+```
+
+The CI job completed:
+
+- Backend test suite
+- Frontend dependency install
+- Frontend lint
+- Frontend tests
+- Frontend production build
+- Frontend proxy demo
+
 ## Notes
 
 The replay query is now scoped to the target transaction's accounts, but the full transaction-journal reconciliation endpoint intentionally keeps its broader scan because that endpoint is a diagnostic sweep, not a hot replay path.
