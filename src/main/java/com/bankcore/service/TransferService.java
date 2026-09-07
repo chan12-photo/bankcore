@@ -18,7 +18,9 @@ import com.bankcore.repository.AccountJournalEntryRepository;
 import com.bankcore.repository.AccountRepository;
 import com.bankcore.repository.FinancialTransactionRepository;
 import com.bankcore.repository.IdempotencyRecordRepository;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -32,6 +34,7 @@ public class TransferService {
 
     private static final int MAX_CALLER_SCOPE_LENGTH = 100;
     private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 120;
+    private static final int MAX_TRANSIENT_CONCURRENCY_ATTEMPTS = 3;
     private static final String IDEMPOTENCY_UNIQUE_CONSTRAINT = "uk_idempotency_scope_operation_key_digest";
 
     private final AccountRepository accountRepository;
@@ -108,6 +111,37 @@ public class TransferService {
 
         IdempotencyOperation operation = IdempotencyOperation.INTERNAL_TRANSFER;
         byte[] idempotencyKeyDigest = IdempotencyKeyDigest.of(callerScope, operation, idempotencyKey);
+        for (int attempt = 1; attempt <= MAX_TRANSIENT_CONCURRENCY_ATTEMPTS; attempt++) {
+            try {
+                return executeIdempotentTransferAttempt(
+                        callerScope,
+                        operation,
+                        idempotencyKeyDigest,
+                        requestFingerprint,
+                        sourceAccountId,
+                        destinationAccountId,
+                        validAmount,
+                        failurePoint
+                );
+            } catch (ConcurrencyFailureException | QueryTimeoutException exception) {
+                if (attempt == MAX_TRANSIENT_CONCURRENCY_ATTEMPTS) {
+                    throw exception;
+                }
+            }
+        }
+        throw new IllegalStateException("Idempotent transfer retry loop exited unexpectedly.");
+    }
+
+    private InternalTransferResult executeIdempotentTransferAttempt(
+            String callerScope,
+            IdempotencyOperation operation,
+            byte[] idempotencyKeyDigest,
+            String requestFingerprint,
+            Long sourceAccountId,
+            Long destinationAccountId,
+            long validAmount,
+            TransferFailurePoint failurePoint
+    ) {
         try {
             return idempotentTransferTransactionTemplate.execute(status -> claimAndRunOrReplay(
                     callerScope,
@@ -247,6 +281,17 @@ public class TransferService {
                 accountJournalEntryRepository.findByTransactionIdOrderByEntryNo(transaction.getId());
         TransactionJournalInvariant.InternalTransferJournalPair journalPair =
                 TransactionJournalInvariant.requireReplayableInternalTransfer(transaction, entries);
+        long balanceAfterMismatchCount =
+                accountJournalEntryRepository.countBalanceAfterMismatchesForTransaction(transaction.getId());
+        if (balanceAfterMismatchCount > 0) {
+            throw new IllegalStateException(
+                    "Internal transfer journal is not replayable: "
+                            + transaction.getId()
+                            + " ["
+                            + TransactionJournalInvariant.BALANCE_AFTER_MISMATCH
+                            + "]"
+            );
+        }
         AccountJournalEntry sourceEntry = journalPair.sourceEntry();
         AccountJournalEntry destinationEntry = journalPair.destinationEntry();
         return new InternalTransferResult(

@@ -12,6 +12,7 @@ public record TransactionJournalReconciliationResponse(
         long increaseEntryCount,
         long distinctAccountCount,
         long journalAmountMismatchCount,
+        long balanceAfterMismatchCount,
         long signedJournalAmount
 ) {
 }

@@ -91,6 +91,36 @@ class AccountJournalControllerIntegrationTest {
     }
 
     @Test
+    void findRecentEntries_shouldReturnApiErrorForNonNumericAccountId() throws Exception {
+        mockMvc.perform(get("/api/v1/accounts/{accountId}/journal-entries", "not-a-number"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST_PARAMETER"))
+                .andExpect(jsonPath("$.message").value("Invalid request parameter: accountId"));
+    }
+
+    @Test
+    void findRecentEntries_shouldReturnApiErrorForNonNumericBeforeEntryId() throws Exception {
+        Account account = createZeroBalanceAccount();
+
+        mockMvc.perform(get("/api/v1/accounts/{accountId}/journal-entries", account.getId())
+                        .param("beforeEntryId", "not-a-number"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST_PARAMETER"))
+                .andExpect(jsonPath("$.message").value("Invalid request parameter: beforeEntryId"));
+    }
+
+    @Test
+    void findRecentEntries_shouldReturnApiErrorForNonNumericLimit() throws Exception {
+        Account account = createZeroBalanceAccount();
+
+        mockMvc.perform(get("/api/v1/accounts/{accountId}/journal-entries", account.getId())
+                        .param("limit", "not-a-number"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST_PARAMETER"))
+                .andExpect(jsonPath("$.message").value("Invalid request parameter: limit"));
+    }
+
+    @Test
     void findRecentEntries_shouldReturnNotFoundForMissingAccount() throws Exception {
         mockMvc.perform(get("/api/v1/accounts/{accountId}/journal-entries", -1L))
                 .andExpect(status().isNotFound())

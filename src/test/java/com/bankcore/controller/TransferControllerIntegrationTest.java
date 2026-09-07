@@ -6,6 +6,7 @@ import com.bankcore.repository.AccountJournalEntryRepository;
 import com.bankcore.repository.AccountRepository;
 import com.bankcore.repository.CustomerRepository;
 import com.bankcore.repository.FinancialTransactionRepository;
+import com.bankcore.repository.IdempotencyRecordRepository;
 import com.bankcore.service.ControlledFundingService;
 import com.bankcore.support.MySqlContainerSupport;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ class TransferControllerIntegrationTest {
 
     @Autowired
     private AccountJournalEntryRepository accountJournalEntryRepository;
+
+    @Autowired
+    private IdempotencyRecordRepository idempotencyRecordRepository;
 
     @Test
     void internalTransfer_shouldMoveMoney_whenIdempotencyHeadersAreProvided() throws Exception {
@@ -221,6 +225,65 @@ class TransferControllerIntegrationTest {
     }
 
     @Test
+    void internalTransfer_shouldRejectDecimalAmountWithoutChangingTransferState() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        assertRejectedBodyLeavesTransferStateUnchanged(
+                sourceAccount,
+                destinationAccount,
+                decimalTransferJson(sourceAccount.getId().toString(), destinationAccount.getId().toString(), "1000.99"),
+                nextIdempotencyKey()
+        );
+    }
+
+    @Test
+    void internalTransfer_shouldRejectDecimalSourceAccountIdWithoutChangingTransferState() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        assertRejectedBodyLeavesTransferStateUnchanged(
+                sourceAccount,
+                destinationAccount,
+                decimalTransferJson(sourceAccount.getId() + ".9", destinationAccount.getId().toString(), "1000"),
+                nextIdempotencyKey()
+        );
+    }
+
+    @Test
+    void internalTransfer_shouldRejectDecimalDestinationAccountIdWithoutChangingTransferState() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+
+        assertRejectedBodyLeavesTransferStateUnchanged(
+                sourceAccount,
+                destinationAccount,
+                decimalTransferJson(sourceAccount.getId().toString(), destinationAccount.getId() + ".9", "1000"),
+                nextIdempotencyKey()
+        );
+    }
+
+    @Test
+    void internalTransfer_shouldRejectSameKeyDecimalAmountsInsteadOfNormalizingThemToSameInteger() throws Exception {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+        String idempotencyKey = nextIdempotencyKey();
+
+        assertRejectedBodyLeavesTransferStateUnchanged(
+                sourceAccount,
+                destinationAccount,
+                decimalTransferJson(sourceAccount.getId().toString(), destinationAccount.getId().toString(), "1000.99"),
+                idempotencyKey
+        );
+        assertRejectedBodyLeavesTransferStateUnchanged(
+                sourceAccount,
+                destinationAccount,
+                decimalTransferJson(sourceAccount.getId().toString(), destinationAccount.getId().toString(), "1000.01"),
+                idempotencyKey
+        );
+    }
+
+    @Test
     void internalTransfer_shouldRejectCallerScopeLongerThanDatabaseLimit() throws Exception {
         Account sourceAccount = createAccountWithBalance(10_000L);
         Account destinationAccount = createAccountWithBalance(2_000L);
@@ -269,5 +332,41 @@ class TransferControllerIntegrationTest {
         return """
                 {"sourceAccountId":%d,"destinationAccountId":%d,"amount":%d}
                 """.formatted(sourceAccountId, destinationAccountId, amount);
+    }
+
+    private static String decimalTransferJson(String sourceAccountId, String destinationAccountId, String amount) {
+        return """
+                {"sourceAccountId":%s,"destinationAccountId":%s,"amount":%s}
+                """.formatted(sourceAccountId, destinationAccountId, amount);
+    }
+
+    private void assertRejectedBodyLeavesTransferStateUnchanged(
+            Account sourceAccount,
+            Account destinationAccount,
+            String requestBody,
+            String idempotencyKey
+    ) throws Exception {
+        long sourceBalanceBefore = accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance();
+        long destinationBalanceBefore =
+                accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance();
+        long transactionCountBefore = financialTransactionRepository.count();
+        long journalCountBefore = accountJournalEntryRepository.count();
+        long idempotencyRecordCountBefore = idempotencyRecordRepository.count();
+
+        mockMvc.perform(post("/api/v1/transfers/internal")
+                        .header("X-Caller-Scope", "controller-test")
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST_BODY"));
+
+        assertThat(accountRepository.findById(sourceAccount.getId()).orElseThrow().getBalance())
+                .isEqualTo(sourceBalanceBefore);
+        assertThat(accountRepository.findById(destinationAccount.getId()).orElseThrow().getBalance())
+                .isEqualTo(destinationBalanceBefore);
+        assertThat(financialTransactionRepository.count()).isEqualTo(transactionCountBefore);
+        assertThat(accountJournalEntryRepository.count()).isEqualTo(journalCountBefore);
+        assertThat(idempotencyRecordRepository.count()).isEqualTo(idempotencyRecordCountBefore);
     }
 }

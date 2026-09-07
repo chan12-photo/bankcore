@@ -4,6 +4,7 @@
 
 - New accounts start with `balance = 0`.
 - Account balance is stored as integer KRW using Java `long` and MySQL `BIGINT`.
+- Public JSON money and id fields must be integer values; floating-point numbers must not be coerced into integers.
 - Account balance must never be negative.
 - Money movement is allowed only when account status is `ACTIVE`.
 - A single requested money amount must be greater than zero.
@@ -29,6 +30,7 @@
 - Optimistic lock experiments must prove that stale concurrent writes do not both commit.
 - Pessimistic lock experiments must prove that competing writers observe serialized account state.
 - Production internal transfer must acquire account write locks in deterministic lower-id-first order to reduce deadlock risk for opposite-direction transfers.
+- Public idempotent transfer makes bounded retries for transient Spring concurrency failures before returning the stable concurrency conflict response.
 
 ## Idempotency
 
@@ -42,6 +44,8 @@
 - Same scoped key with a different fingerprint is rejected.
 - Failed single-transaction idempotent transfers leave no committed idempotency record.
 - Completed idempotency records reference the committed response transaction.
+- `PROCESSING` idempotency records must not reference a response transaction.
+- `COMPLETED` idempotency records must reference a response transaction.
 
 ## Reconciliation
 
@@ -52,6 +56,7 @@
 - Internal transfer entry 1 should decrease the source account and entry 2 should increase the destination account.
 - Internal transfer journal entries should involve two distinct accounts.
 - Internal transfer journal amounts should match the financial transaction amount and net to zero.
+- Every journal entry `balanceAfter` should match the per-account balance produced by replaying prior journal movements in journal entry id order.
 - Reconciliation detects mismatches and reports them.
 - Reconciliation does not automatically repair balances.
 - Accounts created, funded, and transferred through journaled flows should not appear in reconciliation mismatch results.

@@ -2,6 +2,7 @@ package com.bankcore.demo;
 
 import com.bankcore.domain.Account;
 import com.bankcore.repository.AccountRepository;
+import com.bankcore.service.ControlledFundingService;
 import com.bankcore.service.TransferService;
 import com.bankcore.support.MySqlContainerSupport;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ class DemoControllerIntegrationTest {
     @Autowired
     private TransferService transferService;
 
+    @Autowired
+    private ControlledFundingService controlledFundingService;
+
     @Test
     void findDemoAccounts_shouldReturnSeededAliceAndBobAccounts() throws Exception {
         mockMvc.perform(get("/api/v1/demo/accounts"))
@@ -66,6 +70,26 @@ class DemoControllerIntegrationTest {
 
         assertThat(findDemoAccount(DemoDataInitializer.ALICE_ACCOUNT_NUMBER).getBalance()).isEqualTo(100_000L);
         assertThat(findDemoAccount(DemoDataInitializer.BOB_ACCOUNT_NUMBER).getBalance()).isEqualTo(30_000L);
+    }
+
+    @Test
+    void run_shouldMoveBothDemoAccountSurplusesToReserveWhenBothAreAboveStartingBalances() {
+        Account alice = findDemoAccount(DemoDataInitializer.ALICE_ACCOUNT_NUMBER);
+        Account bob = findDemoAccount(DemoDataInitializer.BOB_ACCOUNT_NUMBER);
+        Account reserve = findDemoAccount(DemoDataInitializer.RESERVE_ACCOUNT_NUMBER);
+        long reserveBalanceBefore = reserve.getBalance();
+        controlledFundingService.seedFunds(alice.getId(), 2_000L);
+        controlledFundingService.seedFunds(bob.getId(), 3_000L);
+
+        assertThat(findDemoAccount(DemoDataInitializer.ALICE_ACCOUNT_NUMBER).getBalance()).isEqualTo(102_000L);
+        assertThat(findDemoAccount(DemoDataInitializer.BOB_ACCOUNT_NUMBER).getBalance()).isEqualTo(33_000L);
+
+        demoDataInitializer.run(new DefaultApplicationArguments());
+
+        assertThat(findDemoAccount(DemoDataInitializer.ALICE_ACCOUNT_NUMBER).getBalance()).isEqualTo(100_000L);
+        assertThat(findDemoAccount(DemoDataInitializer.BOB_ACCOUNT_NUMBER).getBalance()).isEqualTo(30_000L);
+        assertThat(findDemoAccount(DemoDataInitializer.RESERVE_ACCOUNT_NUMBER).getBalance())
+                .isEqualTo(reserveBalanceBefore + 5_000L);
     }
 
     private Account findDemoAccount(String accountNumber) {

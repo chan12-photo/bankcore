@@ -76,6 +76,8 @@ public class ReconciliationService {
                     END) AS unknown_movement_count,
                     SUM(CASE WHEN aje.id IS NOT NULL AND aje.amount <> ft.amount THEN 1 ELSE 0 END)
                         AS journal_amount_mismatch_count,
+                    COALESCE(MAX(balance_after_mismatch.balance_after_mismatch_count), 0)
+                        AS balance_after_mismatch_count,
                     COALESCE(SUM(CASE aje.movement_type
                         WHEN 'BALANCE_INCREASE' THEN aje.amount
                         WHEN 'BALANCE_DECREASE' THEN -aje.amount
@@ -83,6 +85,26 @@ public class ReconciliationService {
                     END), 0) AS signed_journal_amount
                 FROM financial_transaction ft
                 LEFT JOIN account_journal_entry aje ON aje.transaction_id = ft.id
+                LEFT JOIN (
+                    SELECT transaction_id, COUNT(*) AS balance_after_mismatch_count
+                    FROM (
+                        SELECT
+                            transaction_id,
+                            balance_after,
+                            SUM(CASE movement_type
+                                WHEN 'BALANCE_INCREASE' THEN amount
+                                WHEN 'BALANCE_DECREASE' THEN -amount
+                                ELSE 0
+                            END) OVER (
+                                PARTITION BY account_id
+                                ORDER BY id
+                                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                            ) AS expected_balance_after
+                        FROM account_journal_entry
+                    ) balance_after_check
+                    WHERE balance_after <> expected_balance_after
+                    GROUP BY transaction_id
+                ) balance_after_mismatch ON balance_after_mismatch.transaction_id = ft.id
                 GROUP BY ft.id, ft.type, ft.amount
                 ORDER BY ft.id
                 """, (resultSet, rowNumber) -> {
@@ -101,6 +123,7 @@ public class ReconciliationService {
                             resultSet.getLong("distinct_account_count"),
                             resultSet.getLong("unknown_movement_count"),
                             resultSet.getLong("journal_amount_mismatch_count"),
+                            resultSet.getLong("balance_after_mismatch_count"),
                             resultSet.getLong("signed_journal_amount")
                     );
             List<String> issueCodes = TransactionJournalInvariant.findIssueCodes(stats);
@@ -117,6 +140,7 @@ public class ReconciliationService {
                     stats.increaseEntryCount(),
                     stats.distinctAccountCount(),
                     stats.journalAmountMismatchCount(),
+                    stats.balanceAfterMismatchCount(),
                     stats.signedJournalAmount()
             );
         }).stream()

@@ -20,6 +20,7 @@ final class TransactionJournalInvariant {
     static final String INCREASE_ENTRY_COUNT = "INCREASE_ENTRY_COUNT";
     static final String DISTINCT_ACCOUNT_COUNT = "DISTINCT_ACCOUNT_COUNT";
     static final String JOURNAL_AMOUNT = "JOURNAL_AMOUNT";
+    static final String BALANCE_AFTER_MISMATCH = "BALANCE_AFTER_MISMATCH";
     static final String SIGNED_AMOUNT_BALANCE = "SIGNED_AMOUNT_BALANCE";
     static final String TRANSACTION_TYPE = "TRANSACTION_TYPE";
 
@@ -44,6 +45,9 @@ final class TransactionJournalInvariant {
         if (stats.journalAmountMismatchCount() > 0) {
             issueCodes.add(JOURNAL_AMOUNT);
         }
+        if (stats.balanceAfterMismatchCount() > 0) {
+            issueCodes.add(BALANCE_AFTER_MISMATCH);
+        }
 
         return List.copyOf(issueCodes);
     }
@@ -52,6 +56,15 @@ final class TransactionJournalInvariant {
             FinancialTransaction transaction,
             List<AccountJournalEntry> entries
     ) {
+        if (transaction.getType() != TransactionType.INTERNAL_TRANSFER) {
+            throw new IllegalStateException(
+                    "Internal transfer journal is not replayable: "
+                            + transaction.getId()
+                            + " ["
+                            + TRANSACTION_TYPE
+                            + "]"
+            );
+        }
         List<JournalEntrySnapshot> snapshots = entries.stream()
                 .map(entry -> new JournalEntrySnapshot(
                         entry.getEntryNo(),
@@ -205,6 +218,7 @@ final class TransactionJournalInvariant {
                 accountIds.size(),
                 unknownMovementCount,
                 journalAmountMismatchCount,
+                0,
                 signedJournalAmount
         );
     }
@@ -223,6 +237,7 @@ final class TransactionJournalInvariant {
             long distinctAccountCount,
             long unknownMovementCount,
             long journalAmountMismatchCount,
+            long balanceAfterMismatchCount,
             long signedJournalAmount
     ) {
     }

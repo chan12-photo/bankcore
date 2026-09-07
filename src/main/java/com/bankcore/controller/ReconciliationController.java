@@ -59,6 +59,7 @@ public class ReconciliationController {
                 result.increaseEntryCount(),
                 result.distinctAccountCount(),
                 result.journalAmountMismatchCount(),
+                result.balanceAfterMismatchCount(),
                 result.signedJournalAmount()
         );
     }

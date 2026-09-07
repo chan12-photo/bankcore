@@ -64,6 +64,31 @@ describe('BankCore Lab Console', () => {
       )
     })
   })
+
+  it('preserves the submitted idempotency operation when the first response is lost', async () => {
+    const fetchMock = vi.fn(createLostFirstTransferFetchHandler())
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderApp()
+
+    expect(await screen.findByText('Alice Demo')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run transfer' }))
+
+    expect(await screen.findByText('Request failed: Failed to fetch')).toBeTruthy()
+    expect(await screen.findByText(/request and idempotency key are preserved/)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry preserved request' }))
+
+    expect(await screen.findByText('#9001')).toBeTruthy()
+    expect(await screen.findByText('Preserved idempotency key recovered a committed transfer response.'))
+      .toBeTruthy()
+    expect(
+      fetchMock.mock.calls.filter(([input, init]) =>
+        String(input) === '/api/v1/transfers/internal' && init?.method === 'POST',
+      ),
+    ).toHaveLength(2)
+  })
 })
 
 function renderApp() {
@@ -147,6 +172,24 @@ async function handleFetch(input: RequestInfo | URL, init?: RequestInit): Promis
   }
 
   return jsonResponse({ code: 'NOT_MOCKED', message: url }, { status: 500 })
+}
+
+function createLostFirstTransferFetchHandler() {
+  let matchingTransferAttempts = 0
+  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = String(input)
+    if (url === '/api/v1/transfers/internal' && init?.method === 'POST') {
+      const body = JSON.parse(String(init.body)) as { amount: number }
+      if (body.amount === transferResponse.amount) {
+        matchingTransferAttempts += 1
+        if (matchingTransferAttempts === 1) {
+          throw new TypeError('Failed to fetch')
+        }
+      }
+    }
+
+    return handleFetch(input, init)
+  }
 }
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {

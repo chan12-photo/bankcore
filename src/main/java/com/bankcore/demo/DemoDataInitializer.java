@@ -19,6 +19,7 @@ class DemoDataInitializer implements ApplicationRunner {
 
     static final String ALICE_ACCOUNT_NUMBER = "DEMO-ALICE-001";
     static final String BOB_ACCOUNT_NUMBER = "DEMO-BOB-001";
+    static final String RESERVE_ACCOUNT_NUMBER = "DEMO-RESERVE-001";
     private static final long ALICE_STARTING_BALANCE = 100_000L;
     private static final long BOB_STARTING_BALANCE = 30_000L;
     private static final String DEMO_REBALANCE_SCOPE = "demo-data-initializer";
@@ -44,7 +45,8 @@ class DemoDataInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         Account alice = ensureDemoAccount("Alice Demo", ALICE_ACCOUNT_NUMBER, ALICE_STARTING_BALANCE);
         Account bob = ensureDemoAccount("Bob Demo", BOB_ACCOUNT_NUMBER, BOB_STARTING_BALANCE);
-        rebalanceDemoAccounts(alice, bob);
+        Account reserve = ensureDemoAccount("Demo Reserve", RESERVE_ACCOUNT_NUMBER, 0L);
+        rebalanceDemoAccounts(alice, bob, reserve);
     }
 
     private Account ensureDemoAccount(String customerName, String accountNumber, long initialBalance) {
@@ -55,34 +57,23 @@ class DemoDataInitializer implements ApplicationRunner {
     private Account createDemoAccount(String customerName, String accountNumber, long initialBalance) {
         Customer customer = customerRepository.saveAndFlush(new Customer(customerName));
         Account account = accountRepository.saveAndFlush(new Account(customer, accountNumber));
-        controlledFundingService.seedFunds(account.getId(), initialBalance);
+        seedShortfall(account.getId(), initialBalance);
         return accountRepository.findByAccountNumber(accountNumber).orElseThrow();
     }
 
-    private void rebalanceDemoAccounts(Account alice, Account bob) {
-        long aliceDelta = ALICE_STARTING_BALANCE - alice.getBalance();
-        long bobDelta = BOB_STARTING_BALANCE - bob.getBalance();
+    private void rebalanceDemoAccounts(Account alice, Account bob, Account reserve) {
+        rebalanceDemoAccount(alice.getAccountNumber(), ALICE_STARTING_BALANCE, reserve.getId());
+        rebalanceDemoAccount(bob.getAccountNumber(), BOB_STARTING_BALANCE, reserve.getId());
+    }
 
-        if (aliceDelta == 0L && bobDelta == 0L) {
-            return;
+    private void rebalanceDemoAccount(String accountNumber, long targetBalance, Long reserveAccountId) {
+        Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow();
+        long delta = targetBalance - account.getBalance();
+        if (delta > 0L) {
+            seedShortfall(account.getId(), delta);
+        } else if (delta < 0L) {
+            transferDemoFunds(account.getId(), reserveAccountId, -delta);
         }
-
-        if (aliceDelta > 0L && bobDelta < 0L) {
-            long transferAmount = Math.min(aliceDelta, -bobDelta);
-            transferDemoFunds(bob.getId(), alice.getId(), transferAmount);
-            seedShortfall(alice.getId(), aliceDelta - transferAmount);
-            return;
-        }
-
-        if (aliceDelta < 0L && bobDelta > 0L) {
-            long transferAmount = Math.min(-aliceDelta, bobDelta);
-            transferDemoFunds(alice.getId(), bob.getId(), transferAmount);
-            seedShortfall(bob.getId(), bobDelta - transferAmount);
-            return;
-        }
-
-        seedShortfall(alice.getId(), aliceDelta);
-        seedShortfall(bob.getId(), bobDelta);
     }
 
     private void transferDemoFunds(Long sourceAccountId, Long destinationAccountId, long amount) {

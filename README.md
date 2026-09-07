@@ -21,9 +21,10 @@ This is not a real banking core, general ledger, compliance system, or productio
 - Service-layer idempotency for internal transfer
 - Public internal transfer API requiring caller scope and idempotency key
 - Deterministic lower-id-first account write locks for internal transfer
+- Bounded retry for transient account concurrency failures on idempotent transfer
 - Controlled seed funding service for journaled test data
 - Account balance reconciliation API
-- Transaction journal reconciliation API
+- Transaction journal reconciliation API, including `balanceAfter` replay checks
 - Account journal keyset pagination API
 
 Public deposit and withdrawal APIs are intentionally not exposed. Deposit and withdrawal behavior exists as domain logic for fixtures and controlled setup only; public money movement is limited to idempotent internal transfer.
@@ -93,7 +94,7 @@ Frontend proxy demo:
 
 This script starts the demo backend on port `18080`, starts the Vite frontend on port `15173`, verifies the frontend root page, calls backend APIs through the frontend `/api` proxy, checks idempotent replay, checks the intentional same-key changed-body `409` conflict, verifies both source and destination journal rows, and confirms account balance plus transaction journal reconciliation return no mismatches.
 
-The `demo` profile keeps Alice and Bob suitable for repeated walkthroughs. If existing demo accounts drift after earlier demo transfers, startup rebalances them back to Alice `100000` and Bob `30000` using journaled internal transfer or controlled seed funding rather than unsafe direct balance edits.
+The `demo` profile keeps Alice and Bob suitable for repeated walkthroughs. If existing demo accounts drift after earlier demo transfers, startup rebalances them back to Alice `100000` and Bob `30000` using journaled internal transfer, controlled seed funding, and a hidden demo reserve account for surplus funds rather than unsafe direct balance edits.
 
 Manual demo:
 
@@ -178,7 +179,7 @@ Open:
 http://localhost:5173
 ```
 
-The console uses Vite's local `/api` proxy to call `http://localhost:8080` by default. It demonstrates demo account loading, internal transfer, same-request idempotent replay, same-key changed-body conflict, journal rows, account balance reconciliation, and transaction journal reconciliation on one screen.
+The console uses Vite's local `/api` proxy to call `http://localhost:8080` by default. It demonstrates demo account loading, internal transfer, same-request idempotent replay, same-key changed-body conflict, journal rows, account balance reconciliation, and transaction journal reconciliation on one screen. If the first transfer response is lost after the server commits, the console preserves the idempotency key and request body so the same request can recover the committed response.
 
 You can also verify the frontend server and API proxy without manual browser clicks:
 
@@ -226,6 +227,8 @@ curl -X POST http://localhost:8080/api/v1/transfers/internal \
   -H "Idempotency-Key: demo-transfer-001" \
   -d '{"sourceAccountId":1,"destinationAccountId":2,"amount":1000}'
 ```
+
+Money fields and ids are integer JSON values. Decimal values such as `1000.99` are rejected as malformed request bodies instead of being truncated.
 
 Find account balance reconciliation mismatches:
 
@@ -291,6 +294,7 @@ http://localhost:8080/v3/api-docs
 - [docs/evidence/2026-09-05-hardening.md](docs/evidence/2026-09-05-hardening.md)
 - [docs/evidence/2026-09-05-frontend-lab-console.md](docs/evidence/2026-09-05-frontend-lab-console.md)
 - [docs/evidence/2026-09-06-local-and-ci-verification.md](docs/evidence/2026-09-06-local-and-ci-verification.md)
+- [docs/evidence/2026-09-07-review-hardening.md](docs/evidence/2026-09-07-review-hardening.md)
 - [docs/submission-checklist-ko.md](docs/submission-checklist-ko.md)
 - [docs/portfolio-writeup-ko.md](docs/portfolio-writeup-ko.md)
 - [docs/resume-and-interview-notes-ko.md](docs/resume-and-interview-notes-ko.md)

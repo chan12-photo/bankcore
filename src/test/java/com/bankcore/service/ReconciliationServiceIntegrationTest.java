@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.context.ImportTestcontainers;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -46,6 +47,9 @@ class ReconciliationServiceIntegrationTest {
 
     @Autowired
     private AccountJournalEntryRepository accountJournalEntryRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void findAccountBalanceMismatches_shouldNotReportAccountsFundedAndTransferredThroughJournaledFlows() {
@@ -102,6 +106,42 @@ class ReconciliationServiceIntegrationTest {
         assertThat(reconciliationService.findTransactionJournalMismatches())
                 .filteredOn(mismatch -> mismatch.transactionId().equals(result.transactionId()))
                 .isEmpty();
+    }
+
+    @Test
+    void findTransactionJournalMismatches_shouldReportBalanceAfterSnapshotThatDoesNotMatchJournalReplay() {
+        Account sourceAccount = createZeroBalanceAccount();
+        Account destinationAccount = createZeroBalanceAccount();
+        controlledFundingService.seedFunds(sourceAccount.getId(), 10_000L);
+        controlledFundingService.seedFunds(destinationAccount.getId(), 2_000L);
+
+        InternalTransferResult result = transferService.transferInternalIdempotent(
+                "transaction-reconciliation-test",
+                nextIdempotencyKey(),
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                3_000L
+        );
+        AccountJournalEntry sourceTransferEntry =
+                accountJournalEntryRepository.findByTransactionIdOrderByEntryNo(result.transactionId()).get(0);
+
+        jdbcTemplate.update(
+                "UPDATE account_journal_entry SET balance_after = ? WHERE id = ?",
+                result.sourceBalanceAfter() + 1,
+                sourceTransferEntry.getId()
+        );
+
+        FinancialTransaction transaction = financialTransactionRepository.findById(result.transactionId()).orElseThrow();
+        assertThat(reconciliationService.findAccountBalanceMismatches())
+                .filteredOn(balanceMismatch -> balanceMismatch.accountId().equals(sourceAccount.getId())
+                        || balanceMismatch.accountId().equals(destinationAccount.getId()))
+                .isEmpty();
+        assertThat(findTransactionMismatch(transaction))
+                .satisfies(mismatch -> {
+                    assertThat(mismatch.issueCodes())
+                            .contains(TransactionJournalInvariant.BALANCE_AFTER_MISMATCH);
+                    assertThat(mismatch.balanceAfterMismatchCount()).isEqualTo(1);
+                });
     }
 
     @Test

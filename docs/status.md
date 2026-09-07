@@ -2,7 +2,7 @@
 
 ## Current Checkpoint
 
-Status date: 2026-09-06
+Status date: 2026-09-07
 
 Completed:
 
@@ -41,36 +41,38 @@ Completed:
 - Opposite-direction concurrent transfers are covered by an ordered-lock integration test to reduce deadlock risk.
 - Account balance reconciliation service compares stored balances against journal-derived balances.
 - Reconciliation API reports mismatched accounts for evidence and diagnostics.
-- Transaction journal reconciliation service detects malformed transaction journal structures, including missing entries, wrong movement directions, same-account transfer pairs, and amount mismatches.
+- Transaction journal reconciliation service detects malformed transaction journal structures, including missing entries, wrong movement directions, same-account transfer pairs, amount mismatches, and invalid `balance_after` snapshots.
 - Reconciliation API reports transaction journal mismatches separately from account balance mismatches.
 - Test-only unsafe no-lock race experiment demonstrates stale-balance overwrite and reconciliation mismatch.
 - Test-only optimistic locking race experiment demonstrates one successful transfer, one optimistic-lock rollback, and no reconciliation mismatch.
-- Optimistic locking failures are mapped to a stable `409 CONFLICT` API response instead of leaking as a generic server error.
+- Transient concurrency failures are retried with a bounded idempotent-transfer retry policy, then mapped to a stable `409 CONFLICT` API response if still unresolved.
 - Test-only pessimistic write lock race experiment demonstrates row-level serialization, an insufficient-balance rollback on the loser, and no reconciliation mismatch.
-- Transfer API returns stable `ApiErrorResponse` bodies for missing headers and malformed request bodies.
+- Transfer API returns stable `ApiErrorResponse` bodies for missing headers, malformed request bodies, and non-numeric path/query parameters.
+- JSON integer ids and money amounts reject floating-point input instead of truncating it.
 - Request DTOs use Bean Validation for required fields and positive transfer amounts.
 - Request DTO validation now also mirrors key database limits for customer names, account numbers, account ids, and transfer amounts.
 - Customer and account services also validate length limits before repository/database use.
-- Database check constraints enforce account status, transaction type, journal movement type, idempotency operation, and idempotency status enum values.
+- Database check constraints enforce account status, transaction type, journal movement type, idempotency operation, and idempotency status enum values with exact case/accent-sensitive matching.
+- Database check constraints enforce idempotency status and response-transaction consistency.
 - Account journal keyset pagination API returns `items`, `nextCursor`, and `hasNext`.
 - Flyway creates `idx_account_journal_account_id_id(account_id, id)` for account journal lookup.
 - Local SQL evidence confirms the journal pagination index is present and usable.
-- Synthetic 50,000-row journal pagination benchmark compares keyset pagination with offset pagination and the seed script includes both query shapes.
+- Synthetic 50,000-row journal pagination benchmark compares service-shaped keyset pagination with offset pagination and the seed script includes both query shapes.
 - A `demo` Spring profile creates two journal-funded synthetic demo accounts for repeatable local walkthroughs.
-- Existing demo accounts are rebalanced back to Alice `100000` and Bob `30000` on demo startup using journaled transfer or controlled seed funding, not direct balance edits.
+- Existing demo accounts are rebalanced back to Alice `100000` and Bob `30000` on demo startup using journaled transfer, controlled seed funding, and a hidden demo reserve account for surplus funds, not direct balance edits.
 - `scripts/demo.sh` runs an automated local demo for health, demo accounts, idempotent transfer replay, same-key changed-body conflict, source and destination journal lookup, account reconciliation, and transaction journal reconciliation.
 - `scripts/demo-frontend.sh` runs an automated local frontend proxy demo for the Vite root page, demo accounts, idempotent replay, same-key changed-body conflict, source and destination journal lookup, account reconciliation, and transaction journal reconciliation.
 - `scripts/verify-local.sh` runs a clean backend test suite, frontend install/lint/test/build, backend API demo, and frontend proxy demo in one command.
 - Demo scripts wait for MySQL container health before starting the backend and print recent logs on readiness failure.
 - OpenAPI JSON and Swagger UI are available through springdoc-openapi and covered by integration tests.
 - React/TypeScript/Vite BankCore Lab Console is implemented under `frontend/`.
-- The lab console uses TanStack Query to load demo accounts, run idempotent internal transfers, replay the same request, probe same-key changed-body conflicts, show journal rows, and show reconciliation status.
+- The lab console uses TanStack Query to load demo accounts, run idempotent internal transfers, replay the same request, recover a preserved request after a lost first response, probe same-key changed-body conflicts, show journal rows, and show reconciliation status.
 - The lab console checks both account balance mismatches and transaction journal mismatches.
 - Vite dev proxy forwards local `/api` calls to the Spring Boot backend on `http://localhost:8080`.
 - Frontend lint, production build, and the frontend proxy demo are covered locally and in GitHub Actions CI.
 - Frontend jsdom behavior testing is covered with Vitest and React Testing Library.
 - ADRs document the scope reduction, idempotency requirement, and reconciliation decision.
-- GitHub Actions CI is green on the latest pushed `main` commits.
+- GitHub Actions CI is green on the latest pushed `main` commits. A new local hardening pass is pending commit and CI verification.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
 - Hardening evidence is captured in `docs/evidence/2026-09-05-hardening.md`.
 - Frontend lab console evidence is captured in `docs/evidence/2026-09-05-frontend-lab-console.md`.
@@ -93,11 +95,10 @@ Current local environment:
 
 ## Next Steps
 
-1. Add bounded retry for selected optimistic-lock conflicts only if the project scope expands toward production-style operations.
-2. Add production-style authentication and authorization only if the project scope expands beyond portfolio evidence.
-3. Capture a short screen recording or screenshots of the Lab Console flow if the portfolio submission platform supports media.
-4. Choose the final resume bullet wording based on the target role.
-5. Keep production banking, authentication, authorization, compliance, and external payment integrations explicitly out of scope unless the project direction changes.
+1. Add production-style authentication and authorization only if the project scope expands beyond portfolio evidence.
+2. Capture a short screen recording or screenshots of the Lab Console flow if the portfolio submission platform supports media.
+3. Choose the final resume bullet wording based on the target role.
+4. Keep production banking, authentication, authorization, compliance, and external payment integrations explicitly out of scope unless the project direction changes.
 
 Recent verified CI:
 

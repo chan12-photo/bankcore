@@ -5,6 +5,9 @@ spring:
     url: ${BANKCORE_DATASOURCE_URL:jdbc:mysql://localhost:3306/bankcore}
     username: ${BANKCORE_DATASOURCE_USERNAME:bankcore}
     password: ${BANKCORE_DATASOURCE_PASSWORD:bankcore_password}
+  jackson:
+    deserialization:
+      accept-float-as-int: false
   jpa:
     open-in-view: false
     hibernate:

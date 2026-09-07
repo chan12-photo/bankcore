@@ -6,6 +6,8 @@ This benchmark captures why account journal lookup uses keyset pagination instea
 
 The benchmark is intentionally synthetic. It is not a production load test, but it gives a reproducible local SQL comparison with a larger journal table than the normal development database.
 
+Re-run on 2026-09-07 after aligning the benchmark SQL with `AccountJournalQueryService`, which fetches `limit + 1` rows to derive `hasNext` and `nextCursor`.
+
 ## Setup
 
 Script:
@@ -28,7 +30,14 @@ Inserted benchmark data:
 
 ```text
 benchmark_account_id  inserted_journal_rows
-2                     50000
+5                     50000
+```
+
+Requested API page size and service query probe size:
+
+```text
+requested_page_size  service_query_limit
+20                   21
 ```
 
 Supporting index:
@@ -47,15 +56,15 @@ SELECT id, transaction_id, entry_no, movement_type, amount, balance_after, creat
 FROM account_journal_entry
 WHERE account_id = ?
 ORDER BY id DESC
-LIMIT 20;
+LIMIT 21;
 ```
 
 Observed `EXPLAIN ANALYZE`:
 
 ```text
--> Limit: 20 row(s) (actual time=0.283..0.285 rows=20 loops=1)
+-> Limit: 21 row(s) (actual time=0.28..0.282 rows=21 loops=1)
     -> Index lookup on account_journal_entry using idx_account_journal_account_id_id
-       (reverse) (actual time=0.282..0.284 rows=20 loops=1)
+       (reverse) (actual time=0.277..0.279 rows=21 loops=1)
 ```
 
 ## Keyset Middle Page
@@ -64,21 +73,23 @@ Query:
 
 ```sql
 SELECT id, transaction_id, entry_no, movement_type, amount, balance_after, created_at
-FROM account_journal_entry USE INDEX (idx_account_journal_account_id_id)
+FROM account_journal_entry
 WHERE account_id = ?
   AND id < ?
 ORDER BY id DESC
-LIMIT 20;
+LIMIT 21;
 ```
 
 Observed `EXPLAIN ANALYZE`:
 
 ```text
--> Limit: 20 row(s) (actual time=0.368..0.370 rows=20 loops=1)
-    -> Index range scan on account_journal_entry using idx_account_journal_account_id_id
-       over (account_id = 2 AND id < 25000) (reverse)
-       (actual time=0.367..0.369 rows=20 loops=1)
+-> Limit: 21 row(s) (actual time=0.0843..0.0873 rows=21 loops=1)
+    -> Filter: (account_id = 5 and id < 75098)
+        -> Index range scan on account_journal_entry using PRIMARY over (id < 75098)
+           (reverse) (actual time=0.0727..0.0738 rows=21 loops=1)
 ```
+
+For this synthetic data distribution, MySQL chose a reverse primary-key range scan for the middle-page query rather than the composite `(account_id, id)` index. The query shape still matches the service implementation and still reads only the probed page after the cursor condition.
 
 ## Offset Comparison
 
@@ -89,15 +100,15 @@ SELECT id, transaction_id, entry_no, movement_type, amount, balance_after, creat
 FROM account_journal_entry
 WHERE account_id = ?
 ORDER BY id DESC
-LIMIT 20 OFFSET 25000;
+LIMIT 21 OFFSET 25000;
 ```
 
 Observed `EXPLAIN ANALYZE`:
 
 ```text
--> Limit/Offset: 20/25000 row(s) (actual time=11.6..11.6 rows=20 loops=1)
+-> Limit/Offset: 21/25000 row(s) (actual time=9.47..9.47 rows=21 loops=1)
     -> Index lookup on account_journal_entry using idx_account_journal_account_id_id
-       (reverse) (actual time=0.297..11.1 rows=25020 loops=1)
+       (reverse) (actual time=0.254..9.06 rows=25021 loops=1)
 ```
 
 ## Takeaway
@@ -106,8 +117,8 @@ The keyset query reads only the requested page after the cursor condition. The o
 
 For this synthetic local run:
 
-- Keyset middle page: about `0.37ms`
-- Offset page at 25,000: about `11.6ms`
-- Offset was roughly `31x` slower in this observed run.
+- Keyset middle page: about `0.087ms`
+- Offset page at 25,000: about `9.47ms`
+- Offset was roughly `109x` slower in this observed run.
 
 The exact timing is machine-dependent, but the access pattern difference is the important evidence.

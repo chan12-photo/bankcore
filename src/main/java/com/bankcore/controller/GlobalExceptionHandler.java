@@ -16,7 +16,8 @@ import com.bankcore.exception.InvalidCustomerNameException;
 import com.bankcore.exception.InvalidIdempotencyRequestException;
 import com.bankcore.exception.InvalidPageRequestException;
 import com.bankcore.exception.SameAccountTransferException;
-import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.ConcurrencyFailureException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -48,14 +50,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage());
     }
 
-    @ExceptionHandler(OptimisticLockingFailureException.class)
-    public ResponseEntity<ApiErrorResponse> handleOptimisticLockingFailure(
-            OptimisticLockingFailureException exception
-    ) {
+    @ExceptionHandler({ConcurrencyFailureException.class, QueryTimeoutException.class})
+    public ResponseEntity<ApiErrorResponse> handleConcurrentModification(RuntimeException exception) {
         return error(
                 HttpStatus.CONFLICT,
                 "CONCURRENT_MODIFICATION",
-                "Account state changed while processing the request. Retry the same request with the same idempotency key."
+                "Concurrent account update could not be completed. Retry the same request with the same idempotency key."
         );
     }
 
@@ -71,6 +71,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> handleMessageNotReadable() {
         return error(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_BODY", "Request body is missing or malformed.");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException exception
+    ) {
+        return error(
+                HttpStatus.BAD_REQUEST,
+                "INVALID_REQUEST_PARAMETER",
+                "Invalid request parameter: " + exception.getName()
+        );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

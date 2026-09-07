@@ -1,6 +1,8 @@
 SET SESSION cte_max_recursion_depth = 60000;
 
 SET @row_count = 50000;
+SET @requested_page_size = 20;
+SET @probed_page_size = 21;
 SET @account_number = CONCAT('BENCH-', LEFT(REPLACE(UUID(), '-', ''), 20));
 
 INSERT INTO customer (name)
@@ -42,12 +44,14 @@ FROM seq;
 
 SELECT @account_id AS benchmark_account_id, @row_count AS inserted_journal_rows;
 
+SELECT @requested_page_size AS requested_page_size, @probed_page_size AS service_query_limit;
+
 EXPLAIN ANALYZE
 SELECT id, transaction_id, entry_no, movement_type, amount, balance_after, created_at
 FROM account_journal_entry
 WHERE account_id = @account_id
 ORDER BY id DESC
-LIMIT 20;
+LIMIT 21;
 
 SET @before_entry_id = (
     SELECT MAX(id) - 25000
@@ -61,11 +65,11 @@ FROM account_journal_entry
 WHERE account_id = @account_id
   AND id < @before_entry_id
 ORDER BY id DESC
-LIMIT 20;
+LIMIT 21;
 
 EXPLAIN ANALYZE
 SELECT id, transaction_id, entry_no, movement_type, amount, balance_after, created_at
 FROM account_journal_entry
 WHERE account_id = @account_id
 ORDER BY id DESC
-LIMIT 20 OFFSET 25000;
+LIMIT 21 OFFSET 25000;

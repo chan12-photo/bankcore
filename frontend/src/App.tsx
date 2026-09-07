@@ -29,7 +29,7 @@ type TransferForm = {
 
 type ReplayCheck = {
   response: TransferResponse
-  identical: boolean
+  identical: boolean | null
 }
 
 type ConflictCheck = {
@@ -149,6 +149,7 @@ function App() {
   const isAnyMutationPending =
     transferMutation.isPending || replayMutation.isPending || conflictMutation.isPending
   const canRunTransfer = accounts.length >= 2 && !isAnyMutationPending
+  const canRecover = firstOperation !== null && firstResponse === null && !isAnyMutationPending
   const canReplay = firstOperation !== null && firstResponse !== null && !isAnyMutationPending
   const canProbeConflict = firstOperation !== null && !isAnyMutationPending
 
@@ -161,7 +162,7 @@ function App() {
 
     setFormError(null)
     setLastError(null)
-    setFirstOperation(null)
+    setFirstOperation(operation)
     setFirstResponse(null)
     setReplayCheck(null)
     setConflictCheck(null)
@@ -170,7 +171,6 @@ function App() {
     try {
       const response = await transferMutation.mutateAsync(operation)
       if (scenarioGeneration === scenarioGenerationRef.current) {
-        setFirstOperation(operation)
         setFirstResponse(response)
       }
     } catch (error) {
@@ -181,7 +181,7 @@ function App() {
   }
 
   async function handleReplay() {
-    if (firstOperation === null || firstResponse === null) {
+    if (firstOperation === null) {
       return
     }
 
@@ -192,6 +192,14 @@ function App() {
     try {
       const response = await replayMutation.mutateAsync(firstOperation)
       if (scenarioGeneration === scenarioGenerationRef.current) {
+        if (firstResponse === null) {
+          setFirstResponse(response)
+          setReplayCheck({
+            response,
+            identical: null,
+          })
+          return
+        }
         setReplayCheck({
           response,
           identical: transferResponsesMatch(firstResponse, response),
@@ -461,7 +469,19 @@ function App() {
         <section className="panel result-panel" aria-live="polite">
           <PanelHeader eyebrow="Step 3" title="Idempotency proof" endpoint="Replay and conflict checks" />
           {firstResponse === null ? (
-            <div className="empty-state">Run a transfer to capture the first transaction response.</div>
+            <div className="result-stack">
+              <div className="empty-state">
+                {firstOperation === null
+                  ? 'Run a transfer to capture the first transaction response.'
+                  : 'The request and idempotency key are preserved. If the server committed before the response was lost, retry the same request to recover the committed response.'}
+              </div>
+              {firstOperation !== null && (
+                <button className="secondary-action" type="button" onClick={handleReplay} disabled={!canRecover}>
+                  {replayMutation.isPending ? 'Recovering...' : 'Retry preserved request'}
+                </button>
+              )}
+              <ReplayStatus replayCheck={replayCheck} />
+            </div>
           ) : (
             <div className="result-stack">
               <TransferResultCard
@@ -681,8 +701,10 @@ function ReplayStatus({ replayCheck }: { replayCheck: ReplayCheck | null }) {
   }
 
   return (
-    <div className={`proof-strip ${replayCheck.identical ? 'is-good' : 'is-bad'}`}>
-      {replayCheck.identical
+    <div className={`proof-strip ${replayCheck.identical === false ? 'is-bad' : 'is-good'}`}>
+      {replayCheck.identical === null
+        ? 'Preserved idempotency key recovered a committed transfer response.'
+        : replayCheck.identical
         ? 'Replay response matches the original transfer response.'
         : 'Replay response differed from the original response.'}
     </div>
@@ -751,6 +773,9 @@ function ReconciliationMismatchList({
           </strong>
           <span>Amount {formatMoney(mismatch.transactionAmount)}</span>
           <span>Journal rows {mismatch.journalEntryCount}</span>
+          {mismatch.balanceAfterMismatchCount > 0 && (
+            <span>Balance snapshots {mismatch.balanceAfterMismatchCount}</span>
+          )}
           <span>Signed journal sum {formatSignedMoney(mismatch.signedJournalAmount)}</span>
           <span>Issues {mismatch.issueCodes.join(', ')}</span>
         </div>

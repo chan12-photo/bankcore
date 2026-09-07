@@ -26,6 +26,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.context.ImportTestcontainers;
 import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -69,6 +70,9 @@ class TransferServiceIntegrationTest {
 
     @Autowired
     private IdempotencyRecordRepository idempotencyRecordRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private AmbientTransferCaller ambientTransferCaller;
@@ -570,6 +574,68 @@ class TransferServiceIntegrationTest {
         ))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(TransactionJournalInvariant.ENTRY_DIRECTION_ORDER);
+    }
+
+    @Test
+    void transferInternalIdempotent_shouldRejectReplayWhenResponseTransactionIsNotInternalTransfer() {
+        Account sourceAccount = createAccountWithBalance(0L);
+        Account destinationAccount = createAccountWithBalance(0L);
+        String idempotencyKey = nextIdempotencyKey();
+        Long amount = 1_000L;
+        ControlledFundingResult seedResult = controlledFundingService.seedFunds(sourceAccount.getId(), amount);
+        FinancialTransaction seedTransaction =
+                financialTransactionRepository.findById(seedResult.transactionId()).orElseThrow();
+        IdempotencyRecord record = new IdempotencyRecord(
+                "integration-test",
+                IdempotencyOperation.INTERNAL_TRANSFER,
+                IdempotencyKeyDigest.of("integration-test", IdempotencyOperation.INTERNAL_TRANSFER, idempotencyKey),
+                TransferRequestFingerprint.internalTransfer(sourceAccount.getId(), destinationAccount.getId(), amount)
+        );
+        record.complete(seedTransaction);
+        idempotencyRecordRepository.saveAndFlush(record);
+
+        assertThatThrownBy(() -> transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                amount
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(TransactionJournalInvariant.TRANSACTION_TYPE);
+    }
+
+    @Test
+    void transferInternalIdempotent_shouldRejectReplayWhenStoredJournalBalanceAfterIsCorrupted() {
+        Account sourceAccount = createAccountWithBalance(10_000L);
+        Account destinationAccount = createAccountWithBalance(2_000L);
+        String idempotencyKey = nextIdempotencyKey();
+        Long amount = 3_000L;
+        InternalTransferResult result = transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                amount
+        );
+        AccountJournalEntry sourceTransferEntry =
+                accountJournalEntryRepository.findByTransactionIdOrderByEntryNo(result.transactionId()).get(0);
+
+        jdbcTemplate.update(
+                "UPDATE account_journal_entry SET balance_after = ? WHERE id = ?",
+                result.sourceBalanceAfter() + 1,
+                sourceTransferEntry.getId()
+        );
+
+        assertThatThrownBy(() -> transferService.transferInternalIdempotent(
+                "integration-test",
+                idempotencyKey,
+                sourceAccount.getId(),
+                destinationAccount.getId(),
+                amount
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(TransactionJournalInvariant.BALANCE_AFTER_MISMATCH);
     }
 
     private Account createAccountWithBalance(long balance) {

@@ -68,6 +68,7 @@ export type TransactionJournalMismatch = {
   increaseEntryCount: number
   distinctAccountCount: number
   journalAmountMismatchCount: number
+  balanceAfterMismatchCount: number
   signedJournalAmount: number
 }
 
