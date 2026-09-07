@@ -72,7 +72,7 @@ Completed:
 - Frontend lint, production build, and the frontend proxy demo are covered locally and in GitHub Actions CI.
 - Frontend jsdom behavior testing is covered with Vitest and React Testing Library.
 - ADRs document the scope reduction, idempotency requirement, and reconciliation decision.
-- GitHub Actions CI is green on the latest pushed `main` commits. A new local hardening pass is pending commit and CI verification.
+- GitHub Actions CI is green on the latest pushed `main` commits.
 - Core behavior evidence is captured in `docs/evidence/2026-09-04-core-behavior.md`.
 - Hardening evidence is captured in `docs/evidence/2026-09-05-hardening.md`.
 - Frontend lab console evidence is captured in `docs/evidence/2026-09-05-frontend-lab-console.md`.
@@ -102,6 +102,6 @@ Current local environment:
 
 Recent verified CI:
 
-- Commit: `a441d055ac9dabf7e2166f4c078c4d8e3bb1c3c3`
-- Run: `https://github.com/chan12-photo/bankcore/actions/runs/34031445684`
+- Commit: `0260ca3ddf2edbe9f96bf0241ba79671f41deddb`
+- Run: `https://github.com/chan12-photo/bankcore/actions/runs/34095186446`
 - Result: success

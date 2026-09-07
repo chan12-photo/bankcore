@@ -74,6 +74,26 @@ Frontend proxy demo: Frontend demo completed successfully.
 Local verification completed successfully.
 ```
 
+## CI Verification
+
+The hardening commit was pushed to `main` and verified by GitHub Actions.
+
+```text
+Commit: 0260ca3ddf2edbe9f96bf0241ba79671f41deddb
+Workflow: CI
+Run: https://github.com/chan12-photo/bankcore/actions/runs/34095186446
+Conclusion: success
+```
+
+The CI job completed:
+
+- Backend test suite
+- Frontend dependency install
+- Frontend lint
+- Frontend tests
+- Frontend production build
+- Frontend proxy demo
+
 ## Pagination Benchmark Re-Run
 
 The benchmark was re-run locally after aligning the script with `AccountJournalQueryService`'s `limit + 1` behavior.
